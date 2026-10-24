@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://maps.google.com https://www.google.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Nukkad: every hackathon, workshop, meetup, conference and summit in one place. Pinned near you, searchable everywhere, matched to you.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#FBF6EC">
+<title>Nukkad: events made for you</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Crect width='8' height='8' rx='2' fill='%23FFB627'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="src/style.css?v=10">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar-row">
+  <a class="logo" href="#discover" aria-label="Nukkad home">nukkad<span aria-hidden="true">.</span></a>
+  <nav aria-label="Main">
+    <a href="#discover" data-nav="discover">Discover</a>
+    <a href="#profile" data-nav="profile" id="navProfile">My profile</a>
+    <a href="#how" data-nav="how">How it works</a>
+    <a href="#host" data-nav="host" class="btn small">Post an event</a>
+  </nav>
+</div></header>
+<main id="main" class="wrap" tabindex="-1">
+
+<section id="discover" data-view>
+  <div class="hero">
+    <div>
+      <p class="kicker" id="hello" role="status" aria-live="polite">Hey there,</p>
+      <h1>Every event nearby, <em>pinned</em> in one place.</h1>
+      <p class="lede">Hackathons, workshops, meetups, conferences and summits. Near you, online, or in another city.</p>
+      <p id="nudge" class="nudge">Tell us what you like and we will pick events for you. <a href="#profile">Set up my profile</a></p>
+    </div>
+    <div class="stack" aria-hidden="true"><div class="pc"></div><div class="pc"></div><div class="pc"></div></div>
+  </div>
+  <section id="picks" class="picks" aria-labelledby="picks-t" hidden><h2 id="picks-t">Suggested for you</h2><ul id="picksList" class="grid"></ul></section>
+  <div class="layout">
+    <aside class="filters" aria-label="Search and filters">
+      <label>Search everything <input type="search" id="q" maxlength="60" placeholder="Event, domain, city, host"></label>
+      <fieldset class="loc"><legend>Your location</legend>
+        <button class="btn ghost small" id="locate" type="button">Use my location</button>
+        <label>or choose a city <select id="city"></select></label>
+        <p id="locMsg" class="hint" role="status" aria-live="polite"></p>
+      </fieldset>
+      <label>Domain <select id="dom"></select></label>
+      <label>Attend <select id="mode"><option value="all">Online or in person</option><option value="online">Online</option><option value="offline">In person</option></select></label>
+      <details class="more"><summary>More filters</summary>
+        <label>Event type <select id="type"></select></label>
+        <label>When <select id="when"><option value="any">Any time</option><option value="week">This week</option><option value="month">This month</option><option value="closing">Registration closing soon</option></select></label>
+        <label>Fee <select id="price"><option value="any">Any</option><option value="free">Free only</option></select></label>
+        <label>Pin events within <select id="near"><option value="10">10 km</option><option value="25" selected>25 km</option><option value="50">50 km</option><option value="100">100 km</option></select></label>
+      </details>
+    </aside>
+    <div>
+      <p id="count" class="count" role="status" aria-live="polite"></p>
+      <section id="nearSec" aria-labelledby="near-t" hidden><h2 id="near-t"></h2><ul id="nearList" class="grid"></ul></section>
+      <section aria-labelledby="rest-t"><h2 id="rest-t"></h2><p id="restHint" class="hint"></p><ul id="list" class="grid"></ul></section>
+    </div>
+  </div>
+</section>
+
+<section id="profile" data-view hidden>
+  <h1>Your profile</h1>
+  <p class="lede">Four quick questions. We pick events from your answers and the events you join.</p>
+  <form id="profileForm" class="panel" novalidate>
+    <label>What should we call you? <input name="name" maxlength="30" autocomplete="given-name" placeholder="Your first name"><span class="err" data-err="name"></span></label>
+    <fieldset><legend>What are you into? Pick up to 5.</legend><div id="pInterests" class="chips"></div></fieldset>
+    <fieldset><legend>You are a</legend><div class="chips">
+      <label class="chip"><input type="radio" name="level" value="student" checked><span>Student</span></label>
+      <label class="chip"><input type="radio" name="level" value="pro"><span>Working professional</span></label></div></fieldset>
+    <button class="btn" type="submit">Save profile</button>
+    <p id="profileMsg" role="status" aria-live="polite"></p>
+  </form>
+  <aside class="panel trail" aria-labelledby="trail-t">
+    <h2 id="trail-t">Your stamp trail</h2><p id="trail-p"></p>
+    <ol id="stamps" class="stamps" aria-label="Weekly stamps"></ol>
+  </aside>
+</section>
+
+<section id="host" data-view hidden>
+  <h1>Post your event</h1>
+  <p class="lede">One page, five short sections. Only the basics are required. People read your event as six tabs: Details, Dates &amp; deadlines, Prizes &amp; fees, Rules &amp; eligibility, FAQs and Contact.</p>
+  <div class="layout host">
+    <form id="hostForm" class="panel" novalidate>
+      <fieldset class="step"><legend>1. The basics</legend>
+        <label>Title <input name="title" maxlength="70" autocomplete="off"><span class="err" data-err="title"></span></label>
+        <label>Host or club <input name="host" maxlength="40" autocomplete="off"><span class="err" data-err="host"></span></label>
+        <div class="paste"><label>Got a WhatsApp or Instagram message? Paste it.
+          <textarea id="paste" rows="3" maxlength="1000"></textarea></label>
+          <button class="btn ghost small" type="button" id="fill">Fill the form for me</button></div>
+        <div class="two"><label>Event type <select name="type"><option value="">Choose</option><option value="hackathon">Hackathon</option><option value="workshop">Workshop</option><option value="meetup">Meetup</option><option value="conference">Conference</option><option value="summit">Summit</option></select><span class="err" data-err="type"></span></label>
+        <label>Hosted by <select name="hostType"><option value="">Choose</option><option value="college">College</option><option value="startup">Startup</option><option value="company">Company</option><option value="community">Community</option></select><span class="err" data-err="hostType"></span></label></div>
+        <fieldset><legend>Domains. Pick up to 4.</legend><div id="hInterests" class="chips"></div><span class="err" data-err="interests"></span></fieldset>
+        <label>Open to <select name="level"><option value="all">Everyone</option><option value="student">Students</option><option value="pro">Professionals</option></select></label>
+        <label>Description <span class="hint">(what it is, who it is for, what people will do)</span> <textarea name="desc" rows="4" maxlength="800" placeholder="Example: A 24-hour hackathon where teams build tools for their city. Mentors, food and a live demo round."></textarea><span class="err" data-err="desc"></span></label>
+      </fieldset>
+
+      <fieldset class="step"><legend>2. When and where</legend>
+        <fieldset><legend>How do people attend?</legend><div class="chips">
+          <label class="chip"><input type="radio" name="mode" value="offline" checked><span>In person</span></label>
+          <label class="chip"><input type="radio" name="mode" value="online"><span>Online</span></label>
+          <label class="chip"><input type="radio" name="mode" value="hybrid"><span>Both</span></label></div><span class="err" data-err="mode"></span></fieldset>
+        <fieldset><legend>Is the date final?</legend><div class="chips">
+          <label class="chip"><input type="radio" name="dateMode" value="fixed" checked><span>Yes, date confirmed</span></label>
+          <label class="chip"><input type="radio" name="dateMode" value="tbd"><span>Not yet, only the deadline</span></label></div></fieldset>
+        <div id="fixedDate" class="two"><label>Event date <input name="date" type="date"><span class="err" data-err="date"></span></label>
+          <label>Start time <input name="time" type="time" value="18:00"></label></div>
+        <div class="two"><label>Registration opens <span class="hint">(optional)</span> <input name="regStart" type="date"><span class="err" data-err="regStart"></span></label>
+        <label>Registration deadline <span id="dlHint" class="hint">(optional)</span> <input name="regDeadline" type="date"><span class="err" data-err="regDeadline"></span></label></div>
+        <fieldset><legend>Other key dates <span class="hint">(optional, up to 5)</span></legend>
+          <p class="hint">Rounds, idea submission, results. Shown to people on the Dates tab in order.</p>
+          <div id="timeline"></div><span class="err" data-err="timeline"></span>
+          <button class="btn ghost small" type="button" id="addDate">Add another date</button></fieldset>
+        <div id="where"><label>Venue <input name="venue" maxlength="80" autocomplete="off" placeholder="Hall, building or cafe"></label>
+          <div class="two"><label>City <input name="city" maxlength="40" list="cities" autocomplete="off"><span class="err" data-err="city"></span></label>
+          <label>State or region <input name="state" maxlength="40" autocomplete="off"></label></div>
+          <label>Country <input name="country" maxlength="40" value="India" autocomplete="off"><span class="err" data-err="country"></span></label>
+          <label>Paste a Google Maps link <input id="mapLink" inputmode="url" autocomplete="off" placeholder="https://www.google.com/maps/..."></label>
+          <button class="btn ghost small" type="button" id="useLoc">Or use my current location</button>
+          <p id="pinStatus" class="hint" role="status" aria-live="polite">No pin yet.</p><span class="err" data-err="loc"></span>
+          <div id="mapPrev"></div></div>
+        <datalist id="cities"></datalist>
+      </fieldset>
+
+      <fieldset class="step"><legend>3. Fee, prizes and benefits</legend>
+        <div class="two"><label>Fee (leave empty if free) <input name="price" type="number" min="0" step="1" inputmode="numeric"><span class="err" data-err="price"></span></label>
+        <label>Currency <select name="currency"><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>SGD</option></select></label></div>
+        <label>Fee is charged <select name="feeUnit"><option value="person">Per person</option><option value="team">Per team</option></select></label>
+        <fieldset><legend>What do participants get?</legend><div id="hBenefits" class="chips"></div></fieldset>
+        <label>Prize pool or highlight <input name="prizeNote" maxlength="80" placeholder="Example: 50,000 prize pool"><span class="err" data-err="prizeNote"></span></label>
+        <fieldset><legend>Prize breakdown <span class="hint">(optional, up to 5)</span></legend>
+          <div id="prizes"></div><span class="err" data-err="prizes"></span>
+          <button class="btn ghost small" type="button" id="addPrize">Add another prize</button></fieldset>
+      </fieldset>
+
+      <fieldset class="step"><legend>4. Rules and team (for competitions)</legend>
+        <div class="two"><label>Team size, minimum <input name="teamMin" type="number" min="1" max="50" inputmode="numeric"></label>
+        <label>Team size, maximum <input name="teamMax" type="number" min="1" max="50" inputmode="numeric"></label></div><span class="err" data-err="team"></span>
+        <div class="two"><label>AI tools and vibe coding <select name="aiTools"><option value="na">Not applicable</option><option value="allowed">Allowed</option><option value="not_allowed">Not allowed</option></select></label>
+        <label>Inter-college teams <select name="interCollege"><option value="na">Not applicable</option><option value="yes">Allowed</option><option value="no">Not allowed</option></select></label></div>
+        <label>Who can participate <span class="hint">(optional)</span> <textarea name="eligibility" rows="2" maxlength="300" placeholder="Example: Students of any college in India. A valid college ID is needed at check-in."></textarea><span class="err" data-err="eligibility"></span></label>
+        <label>Other rules <span class="hint">(one rule per line, shown as a list)</span> <textarea name="rules" rows="3" maxlength="400" placeholder="Code must be written during the event.&#10;Teams can use open-source libraries.&#10;The judges&#39; decision is final."></textarea><span class="err" data-err="rules"></span></label>
+        <fieldset><legend>FAQs. Add up to 5.</legend><div id="faqs"></div><span class="err" data-err="faqs"></span>
+          <button class="btn ghost small" type="button" id="addFaq">Add another FAQ</button></fieldset>
+      </fieldset>
+
+      <fieldset class="step"><legend>5. Poster, contact and links</legend>
+        <label>Contact email for questions <input name="contactEmail" type="email" maxlength="100" autocomplete="email"><span class="err" data-err="contactEmail"></span></label>
+        <div class="two"><label>Contact phone <span class="hint">(optional)</span> <input name="contactPhone" type="tel" maxlength="25" inputmode="tel" autocomplete="tel" placeholder="+91 98765 43210"><span class="err" data-err="contactPhone"></span></label>
+        <label>Contact person <span class="hint">(optional)</span> <input name="contactName" maxlength="40" autocomplete="off" placeholder="Example: Riya, event lead"><span class="err" data-err="contactName"></span></label></div>
+        <label>Poster (PNG, JPG or WebP, up to 1.5 MB) <input type="file" id="poster" accept="image/png,image/jpeg,image/webp"><span class="err" data-err="poster"></span></label>
+        <div id="posterPrev"></div>
+        <label>Doubt-solving community (WhatsApp group or community link) <input name="whatsapp" inputmode="url" placeholder="https://chat.whatsapp.com/..."><span class="err" data-err="whatsapp"></span></label>
+        <label>Registration or website link <input name="website" inputmode="url" placeholder="https://..."><span class="err" data-err="website"></span></label>
+        <label>Instagram page <span class="hint">(optional)</span> <input name="instagram" inputmode="url" autocomplete="off" placeholder="https://www.instagram.com/..."><span class="err" data-err="instagram"></span></label>
+        <label>LinkedIn page <span class="hint">(optional)</span> <input name="linkedin" inputmode="url" autocomplete="off" placeholder="https://www.linkedin.com/..."><span class="err" data-err="linkedin"></span></label>
+      </fieldset>
+      <button class="btn" type="submit">Publish event</button>
+      <p id="hostMsg" role="status" aria-live="polite"></p>
+    </form>
+    <aside class="panel reach" aria-labelledby="reach-t">
+      <h2 id="reach-t">Audience finder</h2>
+      <p class="big" id="reachN">0</p><p id="reachNote" class="hint"></p>
+      <label>Nearby means within <select id="reachR"><option value="10">10 km</option><option value="25" selected>25 km</option><option value="50">50 km</option><option value="100">100 km</option></select></label>
+      <ul id="reachBars" class="rbars"></ul>
+      <p class="hint">Online and hybrid events reach people anywhere. Based on 240 sample profiles until real sign-ups arrive.</p>
+    </aside>
+  </div>
+  <div id="kit" class="panel" hidden><h2>Share it where your people are</h2><p class="hint">Optional. Post only where you already have an audience.</p><div id="kitBody"></div></div>
+</section>
+
+<section id="how" data-view hidden>
+  <h1>How it works</h1>
+  <ol class="steps">
+    <li><h2>Search everything</h2><p>Find any event by name, domain, city or host. In person, online, in another state or abroad.</p></li>
+    <li><h2>See what is nearby</h2><p>Events close to you are pinned on top with distance and a Google Map.</p></li>
+    <li><h2>Get suggestions</h2><p>Your interests and the events you join shape what we suggest, and why.</p></li>
+    <li><h2>Post in one page</h2><p>Dates, deadlines, fees, rules, team size, FAQs and a doubts community in one form.</p></li>
+  </ol>
+</section>
+</main>
+
+<div id="toasts" role="status" aria-live="polite"></div>
+<noscript><p class="wrap">Nukkad needs JavaScript to list events. Please enable it.</p></noscript>
+<dialog id="dlg" aria-labelledby="dlgT"><button class="x" id="dlgX" type="button" aria-label="Close">&times;</button><div id="dlgBody"></div></dialog>
+<footer class="wrap foot">Sample events plus whatever organizers post. Your profile and history stay on your device.</footer>
+<script type="module" src="src/app.js?v=10"></script>
+</body>
+</html>
