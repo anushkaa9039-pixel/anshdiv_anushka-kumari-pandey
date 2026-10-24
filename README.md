@@ -2,6 +2,10 @@
 
 Hyperlocal event discovery and community engagement. Attendees get a ranked feed; organizers get an audience finder.
 
+
+##Deployment link : https://anshdiv-anushka-kumari-pandey.vercel.app/
+
+
 ## Run
 1. `cp .env.example .env` and add your OpenRouter key (server-side only; never commit it).
 2. `npm start`, open http://localhost:3000 (Node 18+). Without a key the app still works with local parsing.
