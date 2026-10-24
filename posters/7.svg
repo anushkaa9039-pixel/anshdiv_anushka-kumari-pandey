@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><rect width="1200" height="600" fill="#C9E86B"/>
+<path d="M0 150H1200M0 300H1200M0 450H1200M200 0V600M400 0V600M600 0V600M800 0V600M1000 0V600" stroke="#14120F" stroke-opacity=".08" stroke-width="2"/>
+<rect x="792" y="92" width="360" height="360" fill="#14120F"/><rect x="780" y="80" width="360" height="360" fill="#FBF6EC" stroke="#14120F" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><path d="M860 350a52 52 0 0 1 10-102a85 85 0 0 1 160 10a48 48 0 0 1-8 92z" fill="#2FA37A" stroke="#14120F" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/><text x="950" y="330" font-size="84" font-family="Courier New,monospace" font-weight="900" text-anchor="middle" fill="#FBF6EC" stroke="#14120F" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">&lt;/&gt;</text>
+<text x="64" y="104" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="700" letter-spacing="3" fill="#14120F">CLOUDNEST</text>
+<text x="64" y="210" font-family="Georgia,serif" font-size="76" font-weight="900" fill="#14120F">BHOPAL DEV</text><text x="64" y="300" font-family="Georgia,serif" font-size="76" font-weight="900" fill="#14120F">CONFERENCE</text>
+<text x="64" y="378" font-family="Arial,Helvetica,sans-serif" font-size="30" fill="#14120F">Talks · hiring · networking</text>
+<rect x="64" y="410" width="270" height="58" fill="#14120F"/><text x="199" y="450" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="700" letter-spacing="2" text-anchor="middle" fill="#FBF6EC">CONFERENCE</text>
+<rect x="24" y="520" width="1152" height="56" fill="#14120F"/><text x="600" y="557" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" letter-spacing="5" text-anchor="middle" fill="#FBF6EC">REGISTER ON NUKKAD · FREE ENTRY</text>
+<rect x="24" y="24" width="1152" height="552" fill="none" stroke="#14120F" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/></svg>
