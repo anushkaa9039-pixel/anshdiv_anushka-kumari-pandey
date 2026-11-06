@@ -16,6 +16,23 @@ const why = (e) => { const r = suggestReason(e, state.profile, aff()); return r 
 const placeText = (e) => (e.mode === "online" ? "Online" : `${[e.city, e.state || e.country].filter(Boolean).join(", ")}${e.mode === "hybrid" ? " + online" : ""}`);
 const goingCount = (e) => (e.joined ?? 0) + (state.going.has(e.id) ? 1 : 0);
 
+/** Downscales a poster to at most 1200 px and ~600 KB as JPEG. Falls back to the original if the browser cannot. */
+async function shrink(dataUrl) {
+  try {
+    if (dataUrl.length < 400_000) return dataUrl;
+    const img = new Image(); img.src = dataUrl; await img.decode();
+    let k = Math.min(1, 1200 / Math.max(img.width, img.height)), q = 0.85, out = dataUrl;
+    for (let i = 0; i < 6; i++) {
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      out = c.toDataURL("image/jpeg", q);
+      if (out.length <= 600_000) return out;
+      k *= 0.8; q = Math.max(0.6, q - 0.08);
+    }
+    return out;
+  } catch { return dataUrl; }
+}
+
 function posterEl(e) {
   if (e.poster) return h("img", { class: "poster", src: e.poster, alt: `Poster for ${e.title}` });
   return h("div", { class: "poster gen", vars: { "--h": hueOf(e.title) }, "aria-hidden": "true" }, LABEL[e.interests[0]] ?? "Event");
@@ -29,7 +46,7 @@ function card(e) {
   const open = h("button", { class: "btn ghost small", type: "button", "aria-label": `View details for ${e.title}` }, "View details");
   open.addEventListener("click", () => openEvent(e));
   return h("li", { class: "card" }, posterEl(e), e.match != null ? h("span", { class: "badge" }, `${e.match}% match`) : "",
-    h("div", { class: "cbody" }, h("h3", {}, e.title), h("p", { class: "meta" }, `${e.host} · ${whenText(e)}`), tagList(e),
+    h("div", { class: "cbody" }, h("h3", {}, e.title), h("p", { class: "meta" }, `${e.host} · ${whenText(e)}`), ...(e.sample ? [h("p", { class: "sample-tag" }, "Sample event (demo data)")] : []), tagList(e),
       h("p", { class: "meta" }, `${placeText(e)} · ${formatPrice(e.price, e.currency)}`),
       ...(dl.text ? [h("p", { class: `dl ${dl.state}` }, dl.text)] : []), ...channels(e), ...why(e),
       h("div", { class: "cfoot" }, h("strong", {}, e.mode === "online" ? "Online" : formatKm(e.km) || e.city), open)));
@@ -317,7 +334,10 @@ function bind() {
     const bad = validatePoster(f) || ((await sniff(f)) ? "" : "That file is not a real image.");
     if (bad) { msg("[data-err=poster]", bad); ev.target.value = ""; return; }
     const r = new FileReader();
-    r.onload = () => { state.poster = String(r.result); $("#posterPrev").replaceChildren(h("img", { class: "poster", src: state.poster, alt: "Your poster preview" })); };
+    r.onload = async () => {
+      state.poster = await shrink(String(r.result)); // keeps uploads small so they save reliably
+      $("#posterPrev").replaceChildren(h("img", { class: "poster", src: state.poster, alt: "Your poster preview" }));
+    };
     r.readAsDataURL(f);
   });
 
@@ -346,6 +366,7 @@ function bind() {
     const out = await publishEvent(input, state.poster);
     btn.disabled = false;
     if (out?.status === 422) { msg("#hostMsg", "This doesn't look like a real event. Check the title and description."); return; }
+    if (out?.status === 409) { msg("#hostMsg", "An event with this title, host and date is already posted."); return; }
     if (out && out.status !== 201) { msg("#hostMsg", "Couldn't publish right now. Please try again."); return; }
     const e = out ? { ...res.value, ...out.event, poster: safePoster(out.event.poster) } : { id: Date.now(), ...res.value, poster: state.poster }; // no server: this device only
     state.events.unshift(e); renderList(); renderKit(e);
@@ -372,7 +393,13 @@ function route() {
 bind(); renderList(); renderTrail(); renderReach(); route();
 addEventListener("hashchange", route);
 loadEvents().then((list) => {
-  if (!Array.isArray(list)) return;
+  const status = $("#feedStatus");
+  if (!Array.isArray(list)) {
+    status.textContent = "Live events are unavailable right now, so you are seeing sample events. Anything you post is saved on this device only.";
+    status.classList.add("warn");
+    return;
+  }
+  status.textContent = list.length ? "" : "No organizer has posted yet. These are sample events. Post the first real one!";
   const shared = list.flatMap((e) => { const v = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" }); return v.ok ? [{ ...v.value, id: Number(e.id), joined: Number(e.joined) || 0, poster: safePoster(e.poster) }] : []; });
   state.events = [...shared, ...EVENTS];
   renderList();

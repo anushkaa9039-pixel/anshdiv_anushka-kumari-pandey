@@ -27,7 +27,7 @@ test("store keeps only real posters and caps total events", async () => {
   const r = await s.add(mk(), PNG);
   assert.ok(r.ok && r.event.poster === `/api/poster/${r.event.id}`);
   assert.equal((await s.poster(r.event.id)).mime, "image/png");
-  await s.add(mk()); await s.add(mk());
+  await s.add(mk({ title: "Chess Night 2" })); await s.add(mk({ title: "Chess Night 3" }));
   assert.equal((await s.all()).length, 2);
   assert.equal(await s.poster(r.event.id), null);
 });
@@ -93,4 +93,44 @@ test("store keeps the new detail fields and a full publish round-trip returns th
     assert.equal(ok.status, 201);
     assert.equal((await (await fetch(`${base}/api/events`)).json())[0].prizes[0].reward, "Rs 5,000");
   } finally { app.closeAllConnections?.(); app.close(); }
+});
+
+import { createMemoryKv, createRedisKv, pickKv } from "../server/kv.js";
+test("store rejects duplicate events and works on any kv backend", async () => {
+  const s = createEventStore(createMemoryKv());
+  assert.ok((await s.add(mk())).ok);
+  const again = await s.add(mk());
+  assert.equal(again.ok, false);
+  assert.equal(again.duplicate, true);
+  assert.equal((await s.all()).length, 1);
+  assert.ok((await s.addDoubt("5", { text: "Hi?" })).ok);
+  assert.equal((await s.doubts("5")).length, 1);
+});
+test("store drops expired events before applying the cap", async () => {
+  const s = createEventStore(createMemoryKv(), { max: 2 }), past = new Date(2026, 0, 1), now = new Date(2026, 0, 10);
+  await s.add(mk({ title: "Old A", date: "2026-01-03" }), null, past);
+  await s.add(mk({ title: "Old B", date: "2026-01-04" }), null, past);
+  await s.add(mk({ title: "Fresh", date: "2026-01-20" }), null, now);
+  assert.deepEqual((await s.all(now)).map((e) => e.title), ["Fresh"]);
+});
+test("redis kv talks REST, serializes values and rate-limits with INCR", async () => {
+  const calls = [], mem = new Map();
+  const fetchImpl = async (url, init) => {
+    const [c, k, v] = JSON.parse(init.body); calls.push(c);
+    assert.equal(init.headers.Authorization, "Bearer tok");
+    let result = null;
+    if (c === "SET") mem.set(k, v); else if (c === "GET") result = mem.get(k) ?? null; else if (c === "DEL") mem.delete(k);
+    else if (c === "INCR") { mem.set(k, (Number(mem.get(k)) || 0) + 1); result = mem.get(k); } else if (c === "EXPIRE") result = 1;
+    return { ok: true, json: async () => ({ result }) };
+  };
+  const kv = createRedisKv({ url: "https://r.example", token: "tok", fetchImpl });
+  await kv.set("a", { x: 1 });
+  assert.deepEqual(await kv.get("a"), { x: 1 });
+  assert.equal(await kv.get("missing"), null);
+  assert.equal(await kv.incr("rl", 60), 1);
+  assert.equal(await kv.incr("rl", 60), 2);
+  assert.deepEqual(calls.filter((c) => c === "EXPIRE").length, 1);
+  assert.equal(pickKv({ UPSTASH_REDIS_REST_URL: "https://r", UPSTASH_REDIS_REST_TOKEN: "t" }).kind, "redis");
+  assert.equal(pickKv({ KV_REST_API_URL: "https://r", KV_REST_API_TOKEN: "t" }).kind, "redis");
+  assert.equal(pickKv({ VERCEL: "1" }).kind, "file");
 });

@@ -145,3 +145,7 @@ dialog h3{font:900 1.15rem var(--serif);margin:.4rem 0 .2rem}
 .cal td.today{outline:2px dashed var(--red);outline-offset:-2px}
 .legend{margin:0}
 @media(forced-colors:active){.cal td.mark{border:2px solid CanvasText}}
+
+.sample-tag{margin:.15rem 0;font-size:.8rem;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.feed.warn{background:#FFE9E4;border:2px solid var(--red);padding:.5rem .75rem;color:var(--ink)}
+@media(max-width:52rem){.filters{position:static}.filters .more{margin-top:.5rem}}

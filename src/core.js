@@ -134,7 +134,7 @@ export function rank(events, { origin = null, nearbyKm = 25, interest = "all", t
     .filter((e) => (interest === "all" || e.interests.includes(interest)) && (type === "all" || e.type === type))
     .filter((e) => mode === "all" || (mode === "online" ? e.mode !== "offline" : e.mode !== "online"))
     .filter((e) => price === "any" || e.price === 0)
-    .filter((e) => when === "any" || (when === "week" && urgency(e) <= 7) || (when === "month" && urgency(e) <= 30) || (when === "closing" && e.deadlineDays !== null && e.deadlineDays <= 7))
+    .filter((e) => when === "any" || (when === "today" && e.day === 0) || (when === "weekend" && e.day !== null && e.day <= 7 && [0, 6].includes(new Date(`${e.date}T12:00:00`).getDay())) || (when === "week" && urgency(e) <= 7) || (when === "month" && urgency(e) <= 30) || (when === "closing" && e.deadlineDays !== null && e.deadlineDays <= 7))
     .filter((e) => { const t = searchText(e); return tokens.every((k) => t.includes(k)); })
     .map((e) => { const m = matchScore(e, profile, aff); return { ...e, match: e.followed ? Math.min(100, (m ?? 0) + 15) : m }; })
     .sort((a, b) => Number(b.nearby) - Number(a.nearby) || (b.match ?? 0) - (a.match ?? 0) || urgency(a) - urgency(b));

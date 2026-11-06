@@ -159,3 +159,12 @@ test("misc: streak, names, greeting, hue, text parsing, share, invite, calendar"
 test("parseEventText strips mode and time words from the title", () => {
   assert.equal(parseEventText("Hack the Cloud online on Zoom tomorrow 6pm").title, "Hack the Cloud");
 });
+
+test("when filter: today and weekend", async () => {
+  const { rank, dateIn } = await import("../src/core.js");
+  const now = new Date(2026, 10, 5); // Thursday
+  const ev = (id, d) => ({ id, title: "t" + id, host: "h", type: "meetup", mode: "online", interests: ["social"], date: dateIn(d, now), regDeadline: null, price: 0, lat: null, lng: null });
+  const list = [ev(1, 0), ev(2, 2), ev(3, 3), ev(4, 9)];
+  assert.deepEqual(rank(list, { when: "today", now }).map((e) => e.id), [1]);
+  assert.deepEqual(rank(list, { when: "weekend", now }).map((e) => e.id).sort(), [2, 3]);
+});

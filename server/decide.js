@@ -2,8 +2,9 @@
 // Model output is allow-listed below, so pasted text can never inject free-form content.
 import { parseEventText } from "../src/core.js";
 
-const URL_ = "https://openrouter.ai/api/alpha/decisions";
-const MODEL = "typesafe/jev-1.13";
+// Endpoint and model are configurable so they can be changed without a code edit.
+const URL_ = process.env.OPENROUTER_URL || "https://openrouter.ai/api/alpha/decisions";
+const MODEL = process.env.OPENROUTER_MODEL || "typesafe/jev-1.13";
 const TOPICS = ["tech", "arts", "career", "social"];
 const LEVEL = { calm: 1, balanced: 3, lively: 5 };
 const CROWD = { small: 1, medium: 3, large: 5 };

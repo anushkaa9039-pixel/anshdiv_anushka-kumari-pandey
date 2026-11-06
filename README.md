@@ -3,8 +3,21 @@
 Hyperlocal event discovery and community engagement. Attendees get a ranked feed; organizers get an audience finder.
 
 
-##Deployment link : https://anshdiv-anushka-kumari-pandey.vercel.app/
+## Live demo
 
+https://anshdiv-anushka-kumari-pandey.vercel.app/
+
+
+## Deploy on Vercel (what makes posting, doubts and posters work)
+
+The repo ships with `vercel.json`, `api/index.js` (serverless API) and `scripts/build.js` (copies only the public site into `public/`).
+Vercel's disk is temporary, so connect a free Redis database or posted events disappear:
+
+1. Vercel project > **Storage** > **Create Database** > **Upstash for Redis** (free) > connect it to this project.
+   This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL/TOKEN`). No code change needed.
+2. Project > **Settings > Environment Variables**: add `OPENROUTER_API_KEY` (optional; without it the local rules-based event check is used).
+   Optional: `OPENROUTER_URL`, `OPENROUTER_MODEL`.
+3. **Redeploy**, then open `/api/health`. It should show `{"ok":true,"storage":"redis",...}`. If it says `"file"`, the database is not connected yet.
 
 ## Run
 1. `cp .env.example .env` and add your OpenRouter key (server-side only; never commit it).
@@ -33,3 +46,8 @@ Database and login, real user profiles feeding the audience finder, notification
 - `src/core.js` pure logic (matching, validation, distance, audience finder, calendar links) · `src/detail.js` pure event-page model (key facts, schedule, tabs) · `src/dom.js` safe DOM helpers, toast, accessible errors · `src/store.js` storage · `src/app.js` views
 - `server/app.js` HTTP app · `server/limiter.js`, `server/cache.js` · `server/decide.js` model client
 - `test/` unit and server tests · `docs/VIABILITY.md` business plan · `SECURITY.md`
+
+## Known limits (by design, for now)
+
+No login or sign-up yet, so: anyone can post or ask a question, organizers cannot edit or delete their events, and the profile, RSVPs and stamps live in the browser (localStorage) only.
+Sample events are marked "Sample event (demo data)".
