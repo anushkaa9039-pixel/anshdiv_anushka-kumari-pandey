@@ -36,5 +36,5 @@ export const ALL_EVENTS = [
   mk(13, { title: "Delhi Cyber Workshop", host: "DTU Security Cell", type: "workshop", hostType: "college", interests: ["cyber"], level: "student", mode: "offline", city: "Delhi", state: "Delhi", country: "India", venue: "DTU Main Block", lat: 28.7499, lng: 77.1183, date: 8, regDeadline: 6, time: "10:00", joined: 95, price: 199, benefits: ["certificate", "swag"], teamMin: 1, teamMax: 2, interCollege: "yes", desc: "A hands-on introduction to ethical hacking: reconnaissance, web vulnerabilities and safe lab practice." }),
   ...CURATED,
 ];
-/** What visitors see: nothing is pre-loaded, so only events organizers post appear. Add ?demo=1 to the address to preview the built-in sample and Mumbai events. */
-export const EVENTS = [];
+/** What visitors see: the real Mumbai events. Add ?demo=1 to the address to also preview the built-in sample events. */
+export const EVENTS = CURATED;

@@ -50,6 +50,9 @@ const keyHeaders = (token, admin) => ({ "x-manage-token": token ?? "", ...(admin
 export const savePerson = (id, rec) => call("/api/people", { method: "PUT", headers: JSON_H, body: JSON.stringify({ id, ...rec }) });
 export const dropPerson = (id) => call("/api/people", { method: "DELETE", headers: JSON_H, body: JSON.stringify({ id }) });
 export const fetchAudience = (q) => call("/api/audience", { method: "POST", headers: JSON_H, body: JSON.stringify(q) });
-export const updateEvent = (id, token, event, poster, admin) => call(`/api/events/${id}`, { method: "PUT", headers: { ...JSON_H, ...keyHeaders(token, admin) }, body: JSON.stringify({ event, poster }) }, 15000);
+export const updateEvent = (id, token, event, poster, admin, keepPoster = null) => call(`/api/events/${id}`, { method: "PUT", headers: { ...JSON_H, ...keyHeaders(token, admin) }, body: JSON.stringify({ event, poster, keepPoster }) }, 15000);
 export const deleteEvent = (id, token, admin) => call(`/api/events/${id}`, { method: "DELETE", headers: keyHeaders(token, admin) });
 export const sendRsvp = (id, device, going) => call(`/api/events/${id}/rsvp`, { method: "POST", headers: JSON_H, body: JSON.stringify({ device, going }) });
+
+/** Expands a shortened Google Maps link; resolves to the long link, or null. */
+export const resolveMap = async (u) => { try { const r = await fetch(`/api/resolve-map?u=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(8000) }); return r.ok ? (await r.json()).url : null; } catch { return null; } };

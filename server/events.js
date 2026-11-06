@@ -57,7 +57,7 @@ export function createEventStore(target, { max = 300 } = {}) {
       });
     },
     /** Organizer edit. `token` is the management key given at publish time; `admin` skips that check. */
-    async update(id, token, input, posterDataUrl = null, { admin = false, now = new Date() } = {}) {
+    async update(id, token, input, posterDataUrl = null, { admin = false, now = new Date(), keepPoster = null } = {}) {
       const r = validateEvent(input, now, { optionalEmail: isCuratedId(id) });
       if (!r.ok) return { ok: false, status: 400, errors: r.errors };
       const poster = posterDataUrl ? parsePoster(posterDataUrl) : null;
@@ -66,7 +66,7 @@ export function createEventStore(target, { max = 300 } = {}) {
       return lock(async () => {
         const list = await events(), i = list.findIndex((e) => String(e.id) === String(id));
         if (i < 0 && admin && isCuratedId(id)) { // first admin edit of a built-in Mumbai event: it becomes a server event with the same id
-          const event = { id: Number(id), ...r.value, poster: poster ? `/api/poster/${id}` : null, mh: null };
+          const event = { id: Number(id), ...r.value, poster: poster ? `/api/poster/${id}` : /^\/posters\/\d+\.jpg$/.test(keepPoster ?? "") ? keepPoster : null, mh: null };
           if (poster) await kv.set(`poster:${id}`, posterDataUrl);
           await kv.set("events", [event, ...list]);
           return { ok: true, event: pub(event) };

@@ -22,6 +22,7 @@ const FILES = { // allow-list: nothing else on disk is ever served
   "/icon-192.png": ["icon-192.png", "image/png"], "/icon-512.png": ["icon-512.png", "image/png"], "/og.png": ["og.png", "image/png"],
 };
 for (let i = 1; i <= 13; i++) FILES[`/posters/${i}.svg`] = [`posters/${i}.svg`, "image/svg+xml"]; // demo poster art
+for (const i of [9001, 9003, 9004, 9006, 9008, 9009, 9010, 9011]) FILES[`/posters/${i}.jpg`] = [`posters/${i}.jpg`, "image/jpeg"]; // real Mumbai event posters
 export const HEADERS = {
   "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; frame-src https://maps.google.com https://www.google.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   "Cache-Control": "no-cache, must-revalidate", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
@@ -85,6 +86,25 @@ export function createApi({ analyzeFn = defaultAnalyze, key, limit = {}, store =
     if (pathname === "/api/health") {
       if (req.method !== "GET") return err(res, 405, "Method not allowed", { Allow: "GET" }), true;
       return send(res, 200, JSON.stringify({ ok: true, storage: store.kv?.kind ?? "custom", ai: Boolean(key) })), true;
+    }
+    if (pathname === "/api/resolve-map") { // expands a shortened Google Maps share link (maps.app.goo.gl) so the browser can read the pin from it
+      if (req.method !== "GET") return err(res, 405, "Method not allowed", { Allow: "GET" }), true;
+      if (await hit("aud", req, audLimited, 40)) return err(res, 429, "Too many requests", { "Retry-After": "60" }), true;
+      let url = new URL(req.url, "http://x").searchParams.get("u") ?? "";
+      const okHost = (h) => h === "maps.app.goo.gl" || h === "goo.gl" || /^(www\.|maps\.)?google\.[a-z.]+$/.test(h);
+      try {
+        for (let hop = 0; hop < 5; hop++) {
+          const u = new URL(url);
+          if (u.protocol !== "https:" || !okHost(u.hostname) || url.length > 600) return err(res, 400, "Use a Google Maps link"), true;
+          const r = await fetch(u, { redirect: "manual", signal: AbortSignal.timeout(5000), headers: { "User-Agent": "Mozilla/5.0 (compatible; NukkadMapLink/1.0)" } });
+          const loc = r.headers.get("location");
+          if (!(r.status >= 300 && r.status < 400 && loc)) break;
+          url = new URL(loc, u).href;
+        }
+        const f = new URL(url);
+        if (!okHost(f.hostname) || /^goo\.gl$|^maps\.app\.goo\.gl$/.test(f.hostname)) return err(res, 422, "Could not read that link"), true;
+        return send(res, 200, JSON.stringify({ url: f.href }), J, { "Cache-Control": "no-store" }), true;
+      } catch { return err(res, 422, "Could not read that link"), true; }
     }
     if (pathname === "/api/analyze") {
       if (req.method !== "POST") return err(res, 405, "Method not allowed", { Allow: "POST" }), true;
@@ -164,7 +184,7 @@ export function createApi({ analyzeFn = defaultAnalyze, key, limit = {}, store =
         let b;
         try { b = JSON.parse(raw); } catch { return err(res, 400, "Bad request"), true; }
         if (!b || typeof b.event !== "object" || b.event === null) return err(res, 400, "Bad request"), true;
-        r = await store.update(em[1], token(req), b.event, b.poster ?? null, { admin, now: istNow() });
+        r = await store.update(em[1], token(req), b.event, b.poster ?? null, { admin, now: istNow(), keepPoster: b.keepPoster });
       }
       if (r.ok) return send(res, 200, JSON.stringify(r.event ? { event: r.event } : { ok: true })), true;
       return send(res, r.status ?? 400, JSON.stringify({ error: r.status === 403 ? "That management key does not match" : r.status === 404 ? "Event not found" : "Invalid event", errors: r.errors })), true;

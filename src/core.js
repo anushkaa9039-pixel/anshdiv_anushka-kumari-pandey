@@ -39,6 +39,12 @@ export function parseMapLink(raw) {
   return { lat: +m[1], lng: +m[2] };
 }
 
+/** Shortened share links (maps.app.goo.gl/...) can only be expanded by the server. */
+export const isShortMapLink = (raw) => { try { const u = new URL(String(raw).trim()); return u.protocol === "https:" && (u.hostname === "maps.app.goo.gl" || (u.hostname === "goo.gl" && u.pathname.startsWith("/maps"))); } catch { return false; } };
+/** Place name from a /maps/place/<name>/ link, used to fill an empty venue. */
+export function mapPlaceName(raw) {
+  try { const m = /\/maps\/place\/([^/@]+)/.exec(new URL(String(raw).trim()).pathname); return m ? decodeURIComponent(m[1].replace(/\+/g, " ")).slice(0, 80) : ""; } catch { return ""; }
+}
 const HOSTS = { whatsapp: ["chat.whatsapp.com", "wa.me"], instagram: ["instagram.com", "www.instagram.com"], linkedin: ["linkedin.com", "www.linkedin.com", "in.linkedin.com"] };
 /** "" = empty, null = invalid, string = cleaned https link. */
 export function safeLink(kind, raw) {
@@ -158,8 +164,10 @@ export function validateEvent(i, now = new Date(), { optionalEmail = false } = {
 
   let lat = null, lng = null, city = "", state = "", country = "", venue = "";
   if (mode && mode !== "online") {
-    lat = i.lat == null ? NaN : Number(i.lat); lng = i.lng == null ? NaN : Number(i.lng);
-    if (!inRange(lat, lng)) errors.loc = "Pin the location first.";
+    // The map pin is optional: without one, people still get directions and a map from the venue name and city.
+    const hasPin = i.lat != null && i.lat !== "" && i.lng != null && i.lng !== "";
+    lat = hasPin ? Number(i.lat) : null; lng = hasPin ? Number(i.lng) : null;
+    if (hasPin && !inRange(lat, lng)) errors.loc = "That pin is not valid. Paste the Maps link again or skip the pin.";
     city = text(i.city); country = text(i.country); state = text(i.state).slice(0, 40); venue = text(i.venue).slice(0, 80);
     if (city.length < 2 || city.length > 40) errors.city = "Enter the city.";
     if (country.length < 2 || country.length > 40) errors.country = "Enter the country.";
@@ -358,4 +366,4 @@ export function telHref(raw) {
   return /^\+?[\d\s().-]{7,25}$/.test(s) && digits.length >= 7 && digits.length <= 15 ? `tel:${s.startsWith("+") ? "+" : ""}${digits}` : "";
 }
 export const inviteLink = (e, when) => `https://wa.me/?text=${encodeURIComponent(`${e.title} | ${e.time ? `${when}, ${e.time}` : when}. Come with me! Found on Nukkad.`)}`;
-export const safePoster = (p) => (typeof p === "string" && (/^\/(api\/poster\/\d+|posters\/\d+\.svg)$/.test(p) || /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(p)) ? p : null);
+export const safePoster = (p) => (typeof p === "string" && (/^\/(api\/poster\/\d+|posters\/\d+\.(svg|jpg))$/.test(p) || /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(p)) ? p : null);

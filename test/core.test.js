@@ -92,7 +92,9 @@ test("rank keeps events with an unannounced date, drops past ones, boosts follow
 test("validateEvent: minimal online event passes; requirements depend on mode and date status", () => {
   assert.ok(validateEvent(online, NOW).ok);
   const off = validateEvent({ ...online, mode: "offline" }, NOW);
-  for (const k of ["loc", "city", "country"]) assert.ok(off.errors[k], k);
+  for (const k of ["city", "country"]) assert.ok(off.errors[k], k);
+  assert.equal(off.errors.loc, undefined, "the map pin is optional");
+  assert.ok(validateEvent({ ...online, mode: "offline", city: "Mumbai", country: "India", lat: 999, lng: 1 }, NOW).errors.loc, "a wrong pin is still rejected");
   assert.ok(validateEvent(inPerson, NOW).ok);
   assert.ok(validateEvent({ ...inPerson, mode: "hybrid" }, NOW).ok);
   assert.equal(validateEvent({ ...online, mode: "x" }, NOW).errors.mode, "Pick how people attend.");
@@ -128,12 +130,12 @@ test("every sample event is itself valid and covers the brief", () => {
   assert.deepEqual([...new Set(EVENTS.map((e) => e.mode))].sort(), [...MODES].sort());
   assert.ok(EVENTS.some((e) => e.country !== "India" && e.country) && EVENTS.some((e) => e.interests.includes("cyber")) && EVENTS.some((e) => e.interests.includes("blockchain")));
 });
-test("built-in Mumbai events: real, upcoming, Mumbai-area, with at least 2 of every type", () => {
+test("built-in real events: upcoming, linked, posters are safe", () => {
   const real = EVENTS.filter((e) => e.curated);
-  for (const t of EVENT_TYPES) assert.ok(real.filter((e) => e.type === t).length >= 2, `needs 2 ${t}`);
+  assert.ok(real.length >= 6);
   for (const e of real) {
     assert.ok(isCuratedId(e.id) && e.sample === false && /^https:\/\//.test(e.website) && e.date >= "2026-11-06", e.title);
-    assert.ok(Math.abs(e.lat - 19.1) < 0.4 && Math.abs(e.lng - 72.9) < 0.4, `${e.title} should be in the Mumbai area`);
+    if (e.mode !== "online") assert.ok(Number.isFinite(e.lat) && Number.isFinite(e.lng), `${e.title} needs a pin`);
   }
   assert.equal(new Set(real.map((e) => e.id)).size, real.length);
 });

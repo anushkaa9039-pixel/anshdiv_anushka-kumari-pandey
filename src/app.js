@@ -1,9 +1,9 @@
-import { INTERESTS, EVENT_TYPES, BENEFITS, CITIES, rank, validateEvent, validatePoster, parseMapLink, haversine, makePeople, reach, streak, weekOf, parseEventText, shareKit,
+import { INTERESTS, EVENT_TYPES, BENEFITS, CITIES, rank, validateEvent, validatePoster, parseMapLink, isShortMapLink, mapPlaceName, haversine, makePeople, reach, streak, weekOf, parseEventText, shareKit,
   hueOf, cleanName, affinity, suggestReason, sniffImage, greeting, eventLabel, icsFor, googleCalUrl, icsFilename, inviteLink, safePoster, isCuratedId, formatDate, deadlineInfo, formatPrice, formatKm, dateIn } from "./core.js";
 import { MODE_TEXT, TABS, CAL_KEYS, sections, keyFacts, whenText, longDate } from "./detail.js";
 import { EVENTS, ALL_EVENTS } from "./data.js";
 const BASE_EVENTS = new URLSearchParams(location.search).has("demo") ? ALL_EVENTS : EVENTS; // empty unless ?demo=1
-import { analyze, loadEvents, publishEvent, loadDoubts, postDoubt, savePerson, dropPerson, fetchAudience, updateEvent, deleteEvent, sendRsvp } from "./api.js";
+import { analyze, loadEvents, publishEvent, loadDoubts, postDoubt, savePerson, dropPerson, fetchAudience, updateEvent, deleteEvent, sendRsvp, resolveMap } from "./api.js";
 import { $, h, msg, toast, showErrors } from "./dom.js";
 import { store, deviceId } from "./store.js";
 
@@ -216,7 +216,8 @@ function openEvent(e) {
   const kf = h("dl", { class: "kf" }, ...keyFacts(e, now).map((k) => h("div", { class: `kf-item ${k.tone}` }, h("dt", {}, k.label), h("dd", {}, k.value, ...(k.note ? [h("span", { class: "kf-note" }, k.note)] : [])))));
   const when = (it) => h("li", { class: it.past ? "past" : "" }, h("strong", {}, it.label), it.date ? h("time", { datetime: it.date }, it.text) : h("span", {}, it.text),
     ...(it.extra ? [h("span", { class: "hint" }, it.extra)] : []), ...(it.when ? [h("span", { class: "when" }, it.when)] : []));
-  const map = e.lat != null ? [h("iframe", { title: `Map showing where ${e.title} happens`, loading: "lazy", referrerpolicy: "no-referrer", sandbox: "allow-scripts allow-same-origin", src: `https://maps.google.com/maps?q=${e.lat},${e.lng}&z=15&output=embed` })] : [];
+  const mapQ = isCuratedId(e.id) || e.lat == null ? encodeURIComponent([e.venue, e.city, e.state, e.country].filter(Boolean).join(", ")) : `${e.lat},${e.lng}`;
+  const map = e.mode !== "online" && (e.lat != null || e.venue || e.city) ? [h("iframe", { title: `Map showing where ${e.title} happens`, loading: "lazy", referrerpolicy: "no-referrer", sandbox: "allow-scripts allow-same-origin", src: `https://maps.google.com/maps?q=${mapQ}&z=15&output=embed` })] : [];
   const body = {
     details: [factsDl(sec.details.facts), h("h3", {}, "About"), h("p", { class: "pre" }, sec.details.about), ...map],
     dates: [...(sec.dates.note ? [h("p", { class: `dl ${dl.state}` }, sec.dates.note)] : []), h("div", { class: "cals" }, ...sec.dates.months.map(monthCalendar)),
@@ -283,7 +284,7 @@ async function doReach() {
   const seq = ++reachSeq, demoBtn = $("#reachDemo");
   const show = (n, note) => { msg("#reachN", n); msg("#reachNote", note); msg("#reachSplit", ""); msg("#reachTotal", ""); $("#reachBars").replaceChildren(); demoBtn.hidden = true; };
   if (!interests.length) return show("0", "Pick at least one domain to see who you can reach.");
-  if (physical && !state.pin) return show("0", "Pin the location to count people nearby.");
+  if (physical && !state.pin) return show("0", "Add a map pin (optional) to count people nearby.");
   let r;
   if (state.demo) {
     const ev = { interests, level, ...(state.pin ?? {}) }, near = reach(ev, people, physical ? radius : Infinity), any = reach(ev, people, Infinity);
@@ -411,7 +412,7 @@ function bind() {
     fillRows("#prizes", prizeRow, e.prizes ?? [], [["pzPlace", "place"], ["pzReward", "reward"]]);
     if (e.lat != null) setPin({ lat: e.lat, lng: e.lng });
     for (const group of [hf.elements.mode, hf.elements.dateMode]) [...group].find((x) => x.checked)?.dispatchEvent(new Event("change"));
-    state.editing = { id: e.id, token };
+    state.editing = { id: e.id, token, poster: e.poster };
     $("#pubBtn").textContent = "Save changes"; $("#cancelEdit").hidden = false; hf.classList.add("editing");
     msg("#hostMsg", `Editing "${e.title}". Upload a poster only if you want to replace the current one.`);
     hf.scrollIntoView({ behavior: "smooth", block: "start" }); hf.elements.title.focus({ preventScroll: true });
@@ -441,8 +442,20 @@ function bind() {
     const c = h("span", { class: "hint ctr", "aria-hidden": "true" }), upd = () => { c.textContent = `${ta.value.length}/${ta.maxLength}`; };
     ta.after(c); ta.addEventListener("input", upd); hf.addEventListener("reset", () => setTimeout(upd)); upd();
   }
-  $("#mapLink").addEventListener("change", (ev) => { const p = parseMapLink(ev.target.value); p ? setPin(p) : msg("#pinStatus", "Paste the full link from your browser's address bar, not a shortened one."); });
-  $("#useLoc").addEventListener("click", async () => { try { setPin(await locate()); } catch { msg("#pinStatus", "Location is blocked. Paste a Maps link instead."); } });
+  // Paste a Google Maps link and the spot is pinned for you. Shortened share links are expanded by our server first.
+  let linkSeq = 0;
+  const pinFromLink = async () => {
+    const raw = $("#mapLink").value.trim(), seq = ++linkSeq;
+    if (!raw) { state.pin = null; $("#mapPrev").replaceChildren(); msg("#pinStatus", "No pin added. That is fine: people still get a map and directions from the venue and city above."); renderReach(); return; }
+    let full = raw;
+    if (isShortMapLink(raw)) { msg("#pinStatus", "Reading your link..."); full = (await resolveMap(raw)) ?? raw; if (seq !== linkSeq) return; }
+    const p = parseMapLink(full);
+    if (!p) { msg("#pinStatus", "Could not find a spot in that link. In Google Maps open the place, tap Share, and paste that link."); return; }
+    const name = mapPlaceName(full), venue = hf.elements.venue;
+    if (name && !venue.value.trim()) venue.value = name;
+    setPin(p);
+  };
+  $("#mapLink").addEventListener("change", pinFromLink); $("#mapLink").addEventListener("paste", () => setTimeout(pinFromLink, 0));
   const sniff = async (f) => sniffImage(new Uint8Array(await f.slice(0, 12).arrayBuffer())) === f.type;
   $("#poster").addEventListener("change", async (ev) => {
     const f = ev.target.files[0];
@@ -480,7 +493,7 @@ function bind() {
     showErrors(hf, res.errors);
     if (!res.ok) { msg("#hostMsg", "Fix the highlighted fields."); return; }
     const editing = state.editing, btn = $("#pubBtn"); btn.disabled = true;
-    const out = editing ? await updateEvent(editing.id, editing.token, input, state.poster, state.admin) : await publishEvent(input, state.poster);
+    const out = editing ? await updateEvent(editing.id, editing.token, input, state.poster, state.admin, editing.poster) : await publishEvent(input, state.poster);
     btn.disabled = false;
     if (editing && !out) { msg("#hostMsg", "Couldn't reach the server. Your changes are not saved yet."); return; }
     if (out?.status === 403) { msg("#hostMsg", "That management key does not match this event."); return; }
