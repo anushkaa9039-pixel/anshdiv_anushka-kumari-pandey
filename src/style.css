@@ -149,3 +149,9 @@ dialog h3{font:900 1.15rem var(--serif);margin:.4rem 0 .2rem}
 .sample-tag{margin:.15rem 0;font-size:.8rem;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
 .feed.warn{background:#FFE9E4;border:2px solid var(--red);padding:.5rem .75rem;color:var(--ink)}
 @media(max-width:52rem){.filters{position:static}.filters .more{margin-top:.5rem}}
+
+.mine{margin-bottom:1rem}.minelist{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}
+.minelist li{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;border:2px solid var(--ink);padding:.5rem .75rem;background:#fff}
+.minelist .acts{display:flex;flex-wrap:wrap;gap:.4rem}.keybox{margin-bottom:1rem}.keybox summary{cursor:pointer;font-weight:700}
+.keybox input{width:100%;max-width:32rem}.split{margin:.25rem 0}.chip.wide{width:100%}
+.editing{outline:3px dashed var(--red);outline-offset:4px}

@@ -134,3 +134,59 @@ test("redis kv talks REST, serializes values and rate-limits with INCR", async (
   assert.equal(pickKv({ KV_REST_API_URL: "https://r", KV_REST_API_TOKEN: "t" }).kind, "redis");
   assert.equal(pickKv({ VERCEL: "1" }).kind, "file");
 });
+
+test("organizer key: never leaked, required to edit or delete, admin can override", async () => {
+  const s = createEventStore(createMemoryKv());
+  const r = await s.add(mk());
+  assert.ok(r.ok);
+  assert.match(r.token, /^[a-f0-9]{32}$/);
+  assert.equal("mh" in r.event, false);
+  assert.equal(JSON.stringify(await s.all()).includes(r.token), false);
+  assert.equal("mh" in (await s.all())[0], false);
+  assert.equal((await s.update(r.event.id, "wrong", mk({ title: "Chess Night Pro" }))).status, 403);
+  assert.equal((await s.update(r.event.id, "", mk({ title: "Chess Night Pro" }))).status, 403);
+  assert.equal((await s.update(999, r.token, mk())).status, 404);
+  const u = await s.update(r.event.id, r.token, mk({ title: "Chess Night Pro" }));
+  assert.ok(u.ok);
+  assert.equal(u.event.title, "Chess Night Pro");
+  assert.equal(u.event.id, r.event.id);
+  assert.equal((await s.all()).length, 1);
+  assert.equal((await s.update(r.event.id, r.token, mk({ title: "x" }))).status, 400);
+  const admin = await s.update(r.event.id, "", mk({ title: "Admin Edit" }), null, { admin: true });
+  assert.ok(admin.ok);
+  assert.equal((await s.remove(r.event.id, "wrong")).status, 403);
+  assert.ok((await s.remove(r.event.id, r.token)).ok);
+  assert.equal((await s.all()).length, 0);
+  assert.equal((await s.remove(r.event.id, r.token)).status, 404);
+});
+test("edit keeps the poster unless a new one is sent, and delete removes poster, doubts and rsvps", async () => {
+  const s = createEventStore(createMemoryKv());
+  const r = await s.add(mk(), PNG);
+  await s.addDoubt(String(r.event.id), { text: "Parking?" });
+  const u = await s.update(r.event.id, r.token, mk({ title: "Chess Night Two" }), null);
+  assert.equal(u.event.poster, r.event.poster);
+  assert.ok(await s.poster(r.event.id));
+  assert.equal((await s.update(r.event.id, r.token, mk({ title: "Chess Night Two" }), "data:image/png;base64,AAAA")).status, 400);
+  await s.remove(r.event.id, r.token);
+  assert.equal(await s.poster(r.event.id), null);
+  assert.deepEqual(await s.doubts(String(r.event.id)), []);
+});
+test("editing into a duplicate of another event is refused; near-identical titles count as duplicates", async () => {
+  const s = createEventStore(createMemoryKv());
+  const a = await s.add(mk({ title: "Chess Night" }));
+  const b = await s.add(mk({ title: "Go Night" }));
+  assert.equal((await s.update(b.event.id, b.token, mk({ title: "chess  night!" }))).status, 409);
+  assert.equal((await s.add(mk({ title: "CHESS-NIGHT" }))).duplicate, true);
+  assert.ok(a.ok);
+});
+test("rsvp counts one per device, is reversible, and rejects unknown events", async () => {
+  const s = createEventStore(createMemoryKv());
+  const r = await s.add(mk()), D1 = "a".repeat(32), D2 = "b".repeat(32);
+  assert.equal((await s.rsvp(r.event.id, D1, true)).joined, 1);
+  assert.equal((await s.rsvp(r.event.id, D1, true)).joined, 1);
+  assert.equal((await s.rsvp(r.event.id, D2, true)).joined, 2);
+  assert.equal((await s.all())[0].joined, 2);
+  assert.equal((await s.rsvp(r.event.id, D1, false)).joined, 1);
+  assert.equal((await s.rsvp(r.event.id, D1, false)).joined, 1);
+  assert.equal((await s.rsvp(12345, D1, true)).status, 404);
+});

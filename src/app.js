@@ -2,19 +2,24 @@ import { INTERESTS, EVENT_TYPES, BENEFITS, CITIES, rank, validateEvent, validate
   hueOf, cleanName, affinity, suggestReason, sniffImage, greeting, eventLabel, icsFor, googleCalUrl, icsFilename, inviteLink, safePoster, formatDate, deadlineInfo, formatPrice, formatKm, dateIn } from "./core.js";
 import { MODE_TEXT, TABS, CAL_KEYS, sections, keyFacts, whenText, longDate } from "./detail.js";
 import { EVENTS } from "./data.js";
-import { analyze, loadEvents, publishEvent, loadDoubts, postDoubt } from "./api.js";
+import { analyze, loadEvents, publishEvent, loadDoubts, postDoubt, savePerson, dropPerson, fetchAudience, updateEvent, deleteEvent, sendRsvp } from "./api.js";
 import { $, h, msg, toast, showErrors } from "./dom.js";
-import { store } from "./store.js";
+import { store, deviceId } from "./store.js";
 
 const LABEL = Object.fromEntries(INTERESTS), people = makePeople(240);
 const place = store.get("nk:place", null);
 const state = { events: [...EVENTS], origin: place ? { lat: place.lat, lng: place.lng } : null, where: place?.where ?? "", nearbyKm: 25, interest: "all", type: "all", mode: "all", when: "any", price: "any", query: "",
-  profile: store.get("nk:profile", null), following: store.get("nk:follow", []), history: store.get("nk:history", []), going: new Set(store.get("nk:going", [])), weeks: store.get("nk:weeks", []), pin: null, poster: null };
+  profile: store.get("nk:profile", null), following: store.get("nk:follow", []), history: store.get("nk:history", []), going: new Set(store.get("nk:going", [])), weeks: store.get("nk:weeks", []), pin: null, poster: null,
+  mine: store.get("nk:mine", []), admin: store.get("nk:admin", ""), editing: null, demo: false, discoverable: store.get("nk:discover", false) };
+const hooks = { edit: () => {}, stop: () => {} }; // wired up inside bind(), used by the "Your posted events" list
 const first = () => (state.profile?.name ?? "").split(" ")[0];
 const aff = () => (state.history.length ? affinity(state.history) : null);
-const why = (e) => { const r = suggestReason(e, state.profile, aff()); return r ? [h("p", { class: "reason" }, `Suggested for you: ${r}`)] : []; };
+const why = (e) => {
+  const r = suggestReason(e, state.profile, aff()), d = e.mode !== "online" && e.km != null ? ` · ${formatKm(e.km)} away` : "";
+  return r ? [h("p", { class: "reason" }, `Suggested for you: ${r}${d}`)] : [];
+};
 const placeText = (e) => (e.mode === "online" ? "Online" : `${[e.city, e.state || e.country].filter(Boolean).join(", ")}${e.mode === "hybrid" ? " + online" : ""}`);
-const goingCount = (e) => (e.joined ?? 0) + (state.going.has(e.id) ? 1 : 0);
+const goingCount = (e) => (e.joined ?? 0) + (e.sample && state.going.has(e.id) ? 1 : 0); // real events count on the server; sample events add your own tap
 
 /** Downscales a poster to at most 1200 px and ~600 KB as JPEG. Falls back to the original if the browser cannot. */
 async function shrink(dataUrl) {
@@ -55,14 +60,18 @@ function card(e) {
 function renderList() {
   const rows = rank(state.events, { ...state, history: state.history }), n = first(), searching = state.query.trim() !== "";
   const signal = state.profile || state.history.length;
-  const picks = signal && !searching ? rows.filter((e) => suggestReason(e, state.profile, aff())).sort((a, b) => (b.match ?? 0) - (a.match ?? 0)).slice(0, 3) : [];
+  // Top of the feed: events whose domain matches what you like or joined before, and that are within your chosen distance (online always counts).
+  const domainHit = (e) => e.interests.some((i) => state.profile?.interests?.includes(i) || aff()?.interests[i]);
+  const inRange = (e) => e.mode !== "offline" || e.km == null || e.km <= state.nearbyKm;
+  const picks = signal && !searching ? rows.filter((e) => domainHit(e) && inRange(e))
+    .sort((a, b) => (b.match ?? 0) - (a.match ?? 0) || (a.day ?? a.deadlineDays) - (b.day ?? b.deadlineDays)).slice(0, 6) : [];
   const pool = rows.filter((e) => !picks.includes(e));
   const near = state.origin && !searching ? pool.filter((e) => e.nearby) : [];
   const rest = pool.filter((e) => !near.includes(e));
   $("#nudge").hidden = !!signal;
   msg("#hello", n ? `${greeting(new Date().getHours())}, ${n}` : "Hey there,");
   $("#picks").hidden = !picks.length;
-  msg("#picks-t", n ? `Suggested for you, ${n}` : "Suggested for you");
+  msg("#picks-t", `Suggested for you${n ? `, ${n}` : ""}${state.origin ? ` · within ${state.nearbyKm} km` : ""}`);
   $("#picksList").replaceChildren(...picks.map(card));
   $("#nearSec").hidden = !near.length;
   msg("#near-t", `Pinned near you, ${state.where}`);
@@ -208,7 +217,22 @@ function toggle(e) {
   const wk = weekOf();
   if (state.going.size && !state.weeks.includes(wk)) state.weeks.push(wk);
   store.set("nk:going", [...state.going]); store.set("nk:weeks", state.weeks); store.set("nk:history", state.history);
-  renderTrail(); renderList();
+  renderTrail(); renderList(); syncPerson();
+  if (!e.sample) { // real events share one count across everyone
+    sendRsvp(e.id, deviceId(), state.going.has(e.id)).then((r) => {
+      if (r?.joined == null) return;
+      state.events = state.events.map((x) => (x.id === e.id ? { ...x, joined: r.joined } : x));
+      renderList();
+    });
+  }
+}
+let syncT;
+/** Keeps the anonymous audience-network record fresh. Only runs when the person opted in on their profile. */
+function syncPerson(now = false) {
+  if (!state.discoverable) return;
+  clearTimeout(syncT);
+  const send = () => { const a = aff(); savePerson(deviceId(), { interests: state.profile?.interests ?? [], level: state.profile?.level ?? "student", past: a ? a.interests : {}, lat: state.origin?.lat, lng: state.origin?.lng }); };
+  if (now) send(); else syncT = setTimeout(send, 800);
 }
 function renderTrail() {
   const n = streak(state.weeks);
@@ -227,17 +251,35 @@ function chipBoxes(box, name, max, checked = [], onChange = () => {}, list = INT
 const picked = (form, name) => [...form.querySelectorAll(`[name=${name}]:checked`)].map((i) => i.value);
 const options = (sel, items) => sel.replaceChildren(...items.map(([v, t]) => h("option", { value: v }, t)));
 
-function renderReach() {
-  const f = $("#hostForm"), interests = picked(f, "interests"), mode = f.elements.mode.value, radius = +$("#reachR").value;
-  const ev = { interests, level: f.elements.level.value, ...(state.pin ?? {}) };
-  const physical = mode === "offline", r = interests.length ? reach(ev, people, physical ? (state.pin ? radius : -1) : Infinity) : null;
-  const all = interests.length ? reach(ev, people, Infinity).count : 0;
-  msg("#reachN", String(r && !(physical && !state.pin) ? r.count : 0));
-  msg("#reachNote", !interests.length ? "Pick at least one domain to see who you can reach."
-    : physical ? (state.pin ? `people within ${radius} km fit this event. Adding an online option would reach ${all} in total.` : "Pin the location to count people nearby.")
-      : `people anywhere fit this event${state.pin ? `, ${reach(ev, people, radius).count} of them within ${radius} km` : ""}.`);
-  $("#reachBars").replaceChildren(...((physical && !state.pin) || !r ? [] : r.tops.slice(0, 5).map(([id, n]) => h("li", {}, LABEL[id],
-    h("span", { class: "bar", role: "img", "aria-label": `${n} people` }, h("i", { vars: { "--w": `${Math.round((100 * n) / Math.max(1, r.count))}%` } })), String(n)))));
+let reachTimer, reachSeq = 0;
+const renderReach = () => { clearTimeout(reachTimer); reachTimer = setTimeout(doReach, 250); };
+/** Audience finder: real, anonymous counts from people who joined the audience network (or a clearly labelled sample). */
+async function doReach() {
+  const f = $("#hostForm"), interests = picked(f, "interests"), physical = f.elements.mode.value === "offline", radius = +$("#reachR").value, level = f.elements.level.value;
+  const seq = ++reachSeq, demoBtn = $("#reachDemo");
+  const show = (n, note) => { msg("#reachN", n); msg("#reachNote", note); msg("#reachSplit", ""); msg("#reachTotal", ""); $("#reachBars").replaceChildren(); demoBtn.hidden = true; };
+  if (!interests.length) return show("0", "Pick at least one domain to see who you can reach.");
+  if (physical && !state.pin) return show("0", "Pin the location to count people nearby.");
+  let r;
+  if (state.demo) {
+    const ev = { interests, level, ...(state.pin ?? {}) }, near = reach(ev, people, physical ? radius : Infinity), any = reach(ev, people, Infinity);
+    r = { count: near.count, all: any.count, tops: near.tops, total: people.length, demo: true };
+  } else {
+    const out = await fetchAudience({ interests, level, lat: state.pin?.lat ?? null, lng: state.pin?.lng ?? null, radiusKm: physical ? radius : null });
+    if (seq !== reachSeq) return;
+    if (out?.status !== 200) return show("0", "Audience data is unavailable right now. Try again in a moment.");
+    r = out;
+  }
+  if (seq !== reachSeq) return;
+  const who = r.demo ? "sample people" : "people";
+  msg("#reachN", String(r.count));
+  msg("#reachNote", physical ? `${who} within ${radius} km like these domains or joined similar events.${r.all > r.count ? ` An online option would reach ${r.all} in total.` : ""}` : `${who} anywhere like these domains or joined similar events.`);
+  msg("#reachSplit", r.demo ? "Sample audience (demo data), not real people." : `${r.returning} joined events in these domains before · ${r.interested} like them now`);
+  msg("#reachTotal", r.demo ? "" : `${r.total} ${r.total === 1 ? "person has" : "people have"} joined the audience network so far.`);
+  demoBtn.hidden = !(r.demo || r.total < 10);
+  demoBtn.textContent = r.demo ? "Back to the real audience" : "Preview with a sample audience (demo data)";
+  $("#reachBars").replaceChildren(...r.tops.slice(0, 5).map(([id, n]) => h("li", {}, LABEL[id],
+    h("span", { class: "bar", role: "img", "aria-label": `${n} people` }, h("i", { vars: { "--w": `${Math.round((100 * n) / Math.max(1, r.count))}%` } })), String(n))));
 }
 
 function setPin(p) {
@@ -249,7 +291,7 @@ function setPin(p) {
 function setOrigin(o, where) {
   state.origin = { lat: o.lat, lng: o.lng }; state.where = where;
   store.set("nk:place", { ...state.origin, where });
-  renderList();
+  renderList(); syncPerson();
 }
 const locate = () => new Promise((res, rej) => navigator.geolocation
   ? navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lng: p.coords.longitude }), rej, { timeout: 8000 }) : rej(new Error("unsupported")));
@@ -292,6 +334,7 @@ function bind() {
   const pf = $("#profileForm");
   chipBoxes($("#pInterests"), "interests", 5, state.profile?.interests);
   if (state.profile) { pf.elements.level.value = state.profile.level; pf.elements.name.value = state.profile.name ?? ""; }
+  pf.elements.discoverable.checked = state.discoverable;
   pf.addEventListener("submit", (ev) => {
     ev.preventDefault();
     const interests = picked(pf, "interests"), name = cleanName(pf.elements.name.value);
@@ -300,9 +343,12 @@ function bind() {
     if (!interests.length) { msg("#profileMsg", "Pick at least one interest."); return; }
     state.profile = { name, interests, level: pf.elements.level.value };
     store.set("nk:profile", state.profile);
+    const optIn = pf.elements.discoverable.checked;
+    if (optIn) { state.discoverable = true; store.set("nk:discover", true); syncPerson(true); }
+    else if (state.discoverable) { state.discoverable = false; store.set("nk:discover", false); dropPerson(deviceId()); }
     renderList(); msg("#profileMsg", "");
     location.hash = "#discover";
-    toast(`Welcome aboard, ${name.split(" ")[0]}! Your feed just got personal.`);
+    toast(`Welcome aboard, ${name.split(" ")[0]}! Your feed just got personal.${optIn ? " Organizers can now count you anonymously." : ""}`);
   });
 
   const hf = $("#hostForm");
@@ -315,10 +361,54 @@ function bind() {
     $("#fixedDate").hidden = tbd;
     msg("#dlHint", tbd ? "(required while the date is not final)" : "(optional)");
   };
+  const resetHost = () => {
+    hf.reset(); state.pin = null; state.poster = null; resetRows();
+    $("#mapPrev").replaceChildren(); $("#posterPrev").replaceChildren(); msg("#pinStatus", "No pin yet.");
+    chipBoxes($("#hInterests"), "interests", 4, [], renderReach); chipBoxes($("#hBenefits"), "benefits", 6, [], () => {}, BENEFITS);
+    sync(); renderReach();
+  };
+  const FIELDS = ["title", "host", "desc", "type", "hostType", "level", "mode", "venue", "city", "state", "country", "time", "currency", "teamMin", "teamMax", "aiTools", "interCollege", "rules", "contactEmail",
+    "whatsapp", "instagram", "linkedin", "website", "prizeNote", "eligibility", "feeUnit", "contactPhone", "contactName", "regDeadline", "regStart"];
+  const fillRows = (sel, make, list, fields) => $(sel).replaceChildren(...(list.length ? list : [{}]).map((item) => {
+    const row = make(); fields.forEach(([name, key]) => { row.querySelector(`[name=${name}]`).value = item[key] ?? ""; }); return row;
+  }));
+  /** Loads a live event into the form so its organizer can change it. */
+  hooks.edit = (e, token) => {
+    resetHost();
+    for (const k of FIELDS) { const c = hf.elements[k]; if (c && e[k] != null) c.value = String(e[k]); }
+    hf.elements.price.value = e.price ? String(e.price) : "";
+    hf.elements.dateMode.value = e.date ? "fixed" : "tbd"; if (e.date) hf.elements.date.value = e.date;
+    chipBoxes($("#hInterests"), "interests", 4, e.interests, renderReach); chipBoxes($("#hBenefits"), "benefits", 6, e.benefits ?? [], () => {}, BENEFITS);
+    fillRows("#faqs", faqRow, e.faqs ?? [], [["faqQ", "q"], ["faqA", "a"]]);
+    fillRows("#timeline", dateRow, e.timeline ?? [], [["tlLabel", "label"], ["tlDate", "date"]]);
+    fillRows("#prizes", prizeRow, e.prizes ?? [], [["pzPlace", "place"], ["pzReward", "reward"]]);
+    if (e.lat != null) setPin({ lat: e.lat, lng: e.lng });
+    for (const group of [hf.elements.mode, hf.elements.dateMode]) [...group].find((x) => x.checked)?.dispatchEvent(new Event("change"));
+    state.editing = { id: e.id, token };
+    $("#pubBtn").textContent = "Save changes"; $("#cancelEdit").hidden = false; hf.classList.add("editing");
+    msg("#hostMsg", `Editing "${e.title}". Upload a poster only if you want to replace the current one.`);
+    hf.scrollIntoView({ behavior: "smooth", block: "start" }); hf.elements.title.focus({ preventScroll: true });
+  };
+  hooks.stop = () => {
+    state.editing = null; $("#pubBtn").textContent = "Publish event"; $("#cancelEdit").hidden = true; hf.classList.remove("editing");
+    resetHost(); msg("#hostMsg", "");
+  };
+  $("#cancelEdit").addEventListener("click", hooks.stop);
+  $("#keyAdd").addEventListener("click", () => {
+    const v = $("#keyIn").value.trim(), m = /^(\d{1,16})\.([a-f0-9]{32})$/.exec(v);
+    if (v.startsWith("admin:") && v.length > 6) { state.admin = v.slice(6); store.set("nk:admin", state.admin); msg("#keyMsg", "Admin mode is on for this browser."); }
+    else if (m) {
+      const id = Number(m[1]);
+      state.mine = [...state.mine.filter((x) => x.id !== id), { id, token: m[2] }]; store.set("nk:mine", state.mine);
+      msg("#keyMsg", state.events.some((e) => e.id === id) ? "Added. Your event is listed above." : "Saved, but that event is not live right now.");
+    } else { msg("#keyMsg", "That does not look like a management key."); return; }
+    $("#keyIn").value = ""; renderMine();
+  });
   for (const r of [...hf.elements.mode, ...hf.elements.dateMode]) r.addEventListener("change", () => { sync(); renderReach(); });
   hf.elements.level.addEventListener("change", renderReach);
   hf.elements.city.addEventListener("change", (e) => { const c = CITIES.find((x) => x.name.toLowerCase() === e.target.value.trim().toLowerCase()); if (c) { hf.elements.state.value = c.state; hf.elements.country.value = c.country; } });
   $("#reachR").addEventListener("change", renderReach);
+  $("#reachDemo").addEventListener("click", () => { state.demo = !state.demo; renderReach(); });
   addRow("#addFaq", "#faqs", faqRow); addRow("#addDate", "#timeline", dateRow); addRow("#addPrize", "#prizes", prizeRow);
   for (const ta of hf.querySelectorAll("textarea[maxlength]")) { // live "123/400" counters help organisers stay within limits
     const c = h("span", { class: "hint ctr", "aria-hidden": "true" }), upd = () => { c.textContent = `${ta.value.length}/${ta.maxLength}`; };
@@ -362,21 +452,56 @@ function bind() {
     const res = validateEvent(input);
     showErrors(hf, res.errors);
     if (!res.ok) { msg("#hostMsg", "Fix the highlighted fields."); return; }
-    const btn = ev.submitter; btn.disabled = true;
-    const out = await publishEvent(input, state.poster);
+    const editing = state.editing, btn = $("#pubBtn"); btn.disabled = true;
+    const out = editing ? await updateEvent(editing.id, editing.token, input, state.poster, state.admin) : await publishEvent(input, state.poster);
     btn.disabled = false;
+    if (editing && !out) { msg("#hostMsg", "Couldn't reach the server. Your changes are not saved yet."); return; }
+    if (out?.status === 403) { msg("#hostMsg", "That management key does not match this event."); return; }
+    if (out?.status === 404 && editing) { msg("#hostMsg", "This event no longer exists."); return; }
     if (out?.status === 422) { msg("#hostMsg", "This doesn't look like a real event. Check the title and description."); return; }
     if (out?.status === 409) { msg("#hostMsg", "An event with this title, host and date is already posted."); return; }
-    if (out && out.status !== 201) { msg("#hostMsg", "Couldn't publish right now. Please try again."); return; }
+    if (out && out.status !== (editing ? 200 : 201)) { msg("#hostMsg", "Couldn't save right now. Please try again."); return; }
+    if (editing) {
+      const done = { ...res.value, ...out.event, poster: safePoster(out.event.poster) };
+      state.events = state.events.map((x) => (x.id === done.id ? done : x));
+      hooks.stop(); renderList(); renderMine(); toast("Saved. Your changes are live for everyone."); return;
+    }
     const e = out ? { ...res.value, ...out.event, poster: safePoster(out.event.poster) } : { id: Date.now(), ...res.value, poster: state.poster }; // no server: this device only
-    state.events.unshift(e); renderList(); renderKit(e);
-    hf.reset(); state.pin = null; state.poster = null; resetRows();
-    $("#mapPrev").replaceChildren(); $("#posterPrev").replaceChildren(); msg("#pinStatus", "No pin yet.");
-    chipBoxes($("#hInterests"), "interests", 4, [], renderReach); chipBoxes($("#hBenefits"), "benefits", 6, [], () => {}, BENEFITS);
-    sync(); renderReach();
-    msg("#hostMsg", ""); toast(out ? "Live! Your event is on Discover for everyone." : "Saved on this device. Start the server to share it with others.");
+    state.events.unshift(e);
+    state.mine = [...state.mine.filter((m) => m.id !== e.id), { id: e.id, token: out?.manageToken ?? "" }]; store.set("nk:mine", state.mine); // your key to edit or delete it later
+    renderList(); renderKit(e); renderMine();
+    resetHost();
+    msg("#hostMsg", ""); toast(out ? "Live! Your event is on Discover. Find edit and delete under Your posted events." : "Saved on this device. Start the server to share it with others.");
   });
   sync();
+}
+
+/** "Your posted events": edit, delete, or copy the management key. Admin mode lists every live event. */
+function renderMine() {
+  const rows = state.admin ? state.events.filter((e) => !e.sample).map((e) => ({ e, token: state.mine.find((m) => m.id === e.id)?.token ?? "" }))
+    : state.mine.map((m) => ({ e: state.events.find((x) => x.id === m.id), token: m.token })).filter((x) => x.e);
+  $("#mine").hidden = !rows.length;
+  $("#mineList").replaceChildren(...rows.map(({ e, token }) => {
+    const btn = (label, fn, cls = "btn ghost small") => { const b = h("button", { class: cls, type: "button", "aria-label": `${label}: ${e.title}` }, label); b.addEventListener("click", fn); return b; };
+    const acts = h("span", { class: "acts" });
+    if (token || state.admin) acts.append(btn("Edit", () => hooks.edit(e, token)));
+    if (token) acts.append(btn("Copy key", async () => { try { await navigator.clipboard.writeText(`${e.id}.${token}`); toast("Management key copied. Keep it private."); } catch { toast("Couldn't copy. Select the key manually."); } }));
+    acts.append(btn("Delete", () => removeEvent(e, token)));
+    return h("li", {}, h("span", {}, `${e.title} · ${e.date ? formatDate(e.date) : "Date to be announced"}`), acts);
+  }));
+}
+async function removeEvent(e, token) {
+  if (!confirm(`Delete "${e.title}" for everyone? This cannot be undone.`)) return;
+  if (token || state.admin) { // events saved only on this device have no server copy
+    const out = await deleteEvent(e.id, token, state.admin);
+    if (!out) { toast("Couldn't reach the server. Try again."); return; }
+    if (out.status === 403) { toast("That management key does not match."); return; }
+    if (out.status !== 200 && out.status !== 404) { toast("Couldn't delete right now."); return; }
+  }
+  state.events = state.events.filter((x) => x.id !== e.id);
+  state.mine = state.mine.filter((m) => m.id !== e.id); store.set("nk:mine", state.mine);
+  if (state.editing?.id === e.id) hooks.stop();
+  renderList(); renderMine(); toast("Event deleted.");
 }
 
 const VIEWS = ["discover", "profile", "host", "how"];
@@ -390,7 +515,7 @@ function route() {
   $("#main").focus({ preventScroll: true });
 }
 
-bind(); renderList(); renderTrail(); renderReach(); route();
+bind(); renderList(); renderTrail(); renderReach(); renderMine(); route();
 addEventListener("hashchange", route);
 loadEvents().then((list) => {
   const status = $("#feedStatus");
@@ -402,5 +527,5 @@ loadEvents().then((list) => {
   status.textContent = list.length ? "" : "No organizer has posted yet. These are sample events. Post the first real one!";
   const shared = list.flatMap((e) => { const v = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" }); return v.ok ? [{ ...v.value, id: Number(e.id), joined: Number(e.joined) || 0, poster: safePoster(e.poster) }] : []; });
   state.events = [...shared, ...EVENTS];
-  renderList();
+  renderList(); renderMine();
 });

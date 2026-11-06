@@ -70,3 +70,67 @@ test("serves the thirteen demo posters as images and nothing else in /posters", 
   assert.equal((await fetch(`${base}/posters/14.svg`)).status, 404);
   assert.equal(await rawStatus(base, "/posters/..%2fpackage.json"), 404);
 });
+
+import { istNow } from "../server/app.js";
+import { createEventStore } from "../server/events.js";
+import { createMemoryKv } from "../server/kv.js";
+import { dateIn } from "../src/core.js";
+
+const JSONH = { "Content-Type": "application/json" };
+const evBody = (o = {}) => ({ title: "Robotics Meetup", host: "Club", desc: "A relaxed evening of robotics for all levels.", interests: ["iot"], type: "meetup", hostType: "community", mode: "online",
+  dateMode: "fixed", date: dateIn(4, istNow()), contactEmail: "a@b.co", ...o });
+const D1 = "a".repeat(32), D2 = "b".repeat(32);
+
+test("istNow shows the Indian date even when the server clock is UTC", () => {
+  assert.equal(dateIn(0, istNow(new Date("2026-11-06T20:00:00Z"))), "2026-11-07");
+  assert.equal(dateIn(0, istNow(new Date("2026-11-06T10:00:00Z"))), "2026-11-06");
+});
+test("audience network: opt in, count anonymously, opt out", async (t) => {
+  const { s, base } = await start({ store: createEventStore(createMemoryKv()), limit: { writeMax: 100 } }); t.after(done(s));
+  const put = (b, m = "PUT") => fetch(`${base}/api/people`, { method: m, headers: JSONH, body: JSON.stringify(b) });
+  assert.equal((await put({ id: "nope", interests: ["ai"] })).status, 400);
+  assert.equal((await put({ id: D1, interests: [] })).status, 400);
+  assert.equal((await put({ id: D1, interests: ["ai"], lat: 23.26, lng: 77.41, name: "Riya" })).status, 200);
+  assert.equal((await put({ id: D2, interests: [], past: { ai: 2 }, lat: 23.27, lng: 77.4 })).status, 200);
+  const aud = (b) => fetch(`${base}/api/audience`, { method: "POST", headers: JSONH, body: JSON.stringify(b) });
+  const r = await aud({ interests: ["ai"], lat: 23.26, lng: 77.41, radiusKm: 25 });
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.deepEqual([j.count, j.interested, j.returning, j.total], [2, 1, 1, 2]);
+  assert.equal(JSON.stringify(j).includes(D1), false); // counts only, never identities
+  assert.equal((await aud({ interests: [] })).status, 400);
+  assert.equal((await aud({ interests: ["ai"], radiusKm: -5 })).status, 400);
+  assert.equal((await aud({ interests: ["ai"], lat: "x" })).status, 400);
+  assert.equal((await put({ id: D1 }, "DELETE")).status, 200);
+  assert.equal((await (await aud({ interests: ["ai"] })).json()).total, 1);
+  assert.equal((await fetch(`${base}/api/audience`)).status, 405);
+});
+test("event edit/delete need the management key; admin key overrides; rsvp counts are shared", async (t) => {
+  const { s, base } = await start({ store: createEventStore(createMemoryKv()), adminKey: "root-secret", limit: { writeMax: 100 } }); t.after(done(s));
+  const pub = await fetch(`${base}/api/events`, { method: "POST", headers: JSONH, body: JSON.stringify({ event: evBody() }) });
+  assert.equal(pub.status, 201);
+  const { event, manageToken } = await pub.json();
+  assert.match(manageToken, /^[a-f0-9]{32}$/);
+  const list = await (await fetch(`${base}/api/events`)).json();
+  assert.equal(JSON.stringify(list).includes(manageToken), false);
+  assert.equal("mh" in list[0], false);
+  const put = (headers, ev = evBody({ title: "Robotics Meetup 2" })) => fetch(`${base}/api/events/${event.id}`, { method: "PUT", headers: { ...JSONH, ...headers }, body: JSON.stringify({ event: ev }) });
+  assert.equal((await put({})).status, 403);
+  assert.equal((await put({ "x-manage-token": "nope" })).status, 403);
+  assert.equal((await put({ "x-manage-token": manageToken })).status, 200);
+  assert.equal((await put({ "x-manage-token": manageToken }, evBody({ title: "x" }))).status, 400);
+  assert.equal((await put({ "x-admin-key": "wrong" })).status, 403);
+  assert.equal((await put({ "x-admin-key": "root-secret" }, evBody({ title: "Robotics Meetup 3" }))).status, 200);
+  assert.equal((await (await fetch(`${base}/api/events`)).json())[0].title, "Robotics Meetup 3");
+  const rsvp = (device, going) => fetch(`${base}/api/events/${event.id}/rsvp`, { method: "POST", headers: JSONH, body: JSON.stringify({ device, going }) });
+  assert.equal((await (await rsvp(D1, true)).json()).joined, 1);
+  assert.equal((await (await rsvp(D2, true)).json()).joined, 2);
+  assert.equal((await rsvp("bad", true)).status, 400);
+  assert.equal((await (await fetch(`${base}/api/events/999/rsvp`, { method: "POST", headers: JSONH, body: JSON.stringify({ device: D1, going: true }) })).status), 404);
+  const del = (headers) => fetch(`${base}/api/events/${event.id}`, { method: "DELETE", headers });
+  assert.equal((await del({})).status, 403);
+  assert.equal((await del({ "x-manage-token": manageToken })).status, 200);
+  assert.equal((await del({ "x-manage-token": manageToken })).status, 404);
+  assert.equal((await (await fetch(`${base}/api/events`)).json()).length, 0);
+  assert.equal((await fetch(`${base}/api/events/${event.id}`)).status, 405);
+});

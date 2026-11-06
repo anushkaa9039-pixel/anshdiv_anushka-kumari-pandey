@@ -16,7 +16,7 @@ Vercel's disk is temporary, so connect a free Redis database or posted events di
 1. Vercel project > **Storage** > **Create Database** > **Upstash for Redis** (free) > connect it to this project.
    This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL/TOKEN`). No code change needed.
 2. Project > **Settings > Environment Variables**: add `OPENROUTER_API_KEY` (optional; without it the local rules-based event check is used).
-   Optional: `OPENROUTER_URL`, `OPENROUTER_MODEL`.
+   Optional: `OPENROUTER_URL`, `OPENROUTER_MODEL`, and `ADMIN_KEY` (a secret you choose; paste `admin:YOUR_KEY` in "I have a management key" on the Post page to delete any event).
 3. **Redeploy**, then open `/api/health`. It should show `{"ok":true,"storage":"redis",...}`. If it says `"file"`, the database is not connected yet.
 
 ## Run

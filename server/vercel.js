@@ -6,7 +6,7 @@ import { createEventStore } from "./events.js";
 import { pickKv } from "./kv.js";
 
 const store = createEventStore(pickKv());
-const api = createApi({ key: process.env.OPENROUTER_API_KEY, store });
+const api = createApi({ key: process.env.OPENROUTER_API_KEY, store, adminKey: process.env.ADMIN_KEY });
 const HEAD = { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" };
 
 /** The public API path, e.g. /api/events/123/doubts. Copes with a ?__p= rewrite and with an unfilled [id] placeholder. */

@@ -12,7 +12,7 @@ Every phrase of the brief, mapped to what Nukkad does. "Partial" items are calle
 | **Colleges, startups, companies, communities** | Required "hosted by" with exactly these four | Done |
 | **Scattered across WhatsApp, Instagram, LinkedIn, posters, websites** | One page per event: poster, description, dates, fee, rules, FAQs, contact, registration link, community, and optional Instagram and LinkedIn. Paste a WhatsApp or Instagram message to auto-fill. | Done (paste-based; no scraping) |
 | **People miss events relevant to them** | "Suggested for you" from profile interests and events you joined, with the reason; deadline-closing filter; calendar reminders (even for deadline-only events) | Partial: no push notifications yet |
-| **Organizers struggle to reach the right audience nearby** | Audience finder: in-person events count people nearby, online events count people anywhere; optional share kit | Done (sample profiles until real sign-ups) |
+| **Organizers struggle to reach the right audience nearby** | Audience finder: real, anonymous counts from people who opted in on their profile. In-person events count people within the chosen distance whose interests or past events match; online events count people anywhere. Matching people see the event at the top of their feed | Done (real opt-in audience; a clearly labelled sample preview exists for demos) |
 | **Discover relevant events near them** | Nearby pinned first, then everything else searchable, including other states, countries and online | Done |
 | **Reach and engage their target audience** | Audience finder, going counts, follow, doubts community, contact email | Done |
 | **More people actually attend** | RSVP, going counts, calendar, invite a friend, registration deadline shown on every card | Partial: attendance is not verified on the day |
@@ -29,4 +29,4 @@ Every phrase of the brief, mapped to what Nukkad does. "Partial" items are calle
 ## Next steps to close the partials
 1. Check-in on the day so stamps mean real attendance.
 2. Email or push reminders from real accounts.
-3. Real profiles and a hosted database replace the sample audience.
+3. Accounts (login) so organizers and attendees are verified; today an anonymous device id and a private management key stand in for them.

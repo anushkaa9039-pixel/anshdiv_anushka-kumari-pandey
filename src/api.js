@@ -37,3 +37,19 @@ export async function postDoubt(id, body) {
     return { status: r.status };
   } catch { return null; }
 }
+
+// ---- audience network, organizer tools, shared RSVP counts. All resolve to {status, ...body}, or null when the server is unreachable.
+const JSON_H = { "Content-Type": "application/json" };
+async function call(url, init, ms = 8000) {
+  try {
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+    return { status: r.status, ...(await r.json().catch(() => ({}))) };
+  } catch { return null; }
+}
+const keyHeaders = (token, admin) => ({ "x-manage-token": token ?? "", ...(admin ? { "x-admin-key": admin } : {}) });
+export const savePerson = (id, rec) => call("/api/people", { method: "PUT", headers: JSON_H, body: JSON.stringify({ id, ...rec }) });
+export const dropPerson = (id) => call("/api/people", { method: "DELETE", headers: JSON_H, body: JSON.stringify({ id }) });
+export const fetchAudience = (q) => call("/api/audience", { method: "POST", headers: JSON_H, body: JSON.stringify(q) });
+export const updateEvent = (id, token, event, poster, admin) => call(`/api/events/${id}`, { method: "PUT", headers: { ...JSON_H, ...keyHeaders(token, admin) }, body: JSON.stringify({ event, poster }) }, 15000);
+export const deleteEvent = (id, token, admin) => call(`/api/events/${id}`, { method: "DELETE", headers: keyHeaders(token, admin) });
+export const sendRsvp = (id, device, going) => call(`/api/events/${id}/rsvp`, { method: "POST", headers: JSON_H, body: JSON.stringify({ device, going }) });

@@ -83,6 +83,10 @@
     <fieldset><legend>You are a</legend><div class="chips">
       <label class="chip"><input type="radio" name="level" value="student" checked><span>Student</span></label>
       <label class="chip"><input type="radio" name="level" value="pro"><span>Working professional</span></label></div></fieldset>
+    <fieldset><legend>Audience network <span class="hint">(optional)</span></legend>
+      <label class="chip wide"><input type="checkbox" name="discoverable"><span>Let organizers count me in</span></label>
+      <p class="hint">Organizers only see totals, like "14 people within 25 km like AI". Never your name or contact details. Your interests, the topics of events you joined, and your area (rounded to about 1 km) are shared anonymously. Untick and save to leave any time.</p>
+    </fieldset>
     <button class="btn" type="submit">Save profile</button>
     <p id="profileMsg" role="status" aria-live="polite"></p>
   </form>
@@ -95,6 +99,17 @@
 <section id="host" data-view hidden>
   <h1>Post your event</h1>
   <p class="lede">One page, five short sections. Only the basics are required. People read your event as six tabs: Details, Dates &amp; deadlines, Prizes &amp; fees, Rules &amp; eligibility, FAQs and Contact.</p>
+  <section id="mine" class="panel mine" aria-labelledby="mine-t" hidden>
+    <h2 id="mine-t">Your posted events</h2>
+    <p class="hint">Edit or remove an event any time. Your management key is saved in this browser. Copy it to manage from another device.</p>
+    <ul id="mineList" class="minelist"></ul>
+  </section>
+  <details class="panel keybox">
+    <summary>I have a management key</summary>
+    <label>Paste it here <input id="keyIn" autocomplete="off" spellcheck="false" placeholder="1234567890.abcdef..."></label>
+    <button class="btn ghost small" type="button" id="keyAdd">Add</button>
+    <span id="keyMsg" class="hint" role="status" aria-live="polite"></span>
+  </details>
   <div class="layout host">
     <form id="hostForm" class="panel" novalidate>
       <fieldset class="step"><legend>1. The basics</legend>
@@ -170,15 +185,19 @@
         <label>Instagram page <span class="hint">(optional)</span> <input name="instagram" inputmode="url" autocomplete="off" placeholder="https://www.instagram.com/..."><span class="err" data-err="instagram"></span></label>
         <label>LinkedIn page <span class="hint">(optional)</span> <input name="linkedin" inputmode="url" autocomplete="off" placeholder="https://www.linkedin.com/..."><span class="err" data-err="linkedin"></span></label>
       </fieldset>
-      <button class="btn" type="submit">Publish event</button>
+      <button class="btn" type="submit" id="pubBtn">Publish event</button>
+      <button class="btn ghost" type="button" id="cancelEdit" hidden>Cancel editing</button>
       <p id="hostMsg" role="status" aria-live="polite"></p>
     </form>
     <aside class="panel reach" aria-labelledby="reach-t">
       <h2 id="reach-t">Audience finder</h2>
       <p class="big" id="reachN">0</p><p id="reachNote" class="hint"></p>
+      <p id="reachSplit" class="hint split"></p>
       <label>Nearby means within <select id="reachR"><option value="10">10 km</option><option value="25" selected>25 km</option><option value="50">50 km</option><option value="100">100 km</option></select></label>
       <ul id="reachBars" class="rbars"></ul>
-      <p class="hint">Online and hybrid events reach people anywhere. Based on 240 sample profiles until real sign-ups arrive.</p>
+      <p class="hint">These are real people who joined the audience network on their profile. Online and hybrid events reach people anywhere. People near you who like these domains, or joined similar events before, see your event at the top of their feed.</p>
+      <p id="reachTotal" class="hint"></p>
+      <button class="btn ghost small" type="button" id="reachDemo" hidden></button>
     </aside>
   </div>
   <div id="kit" class="panel" hidden><h2>Share it where your people are</h2><p class="hint">Optional. Post only where you already have an audience.</p><div id="kitBody"></div></div>
