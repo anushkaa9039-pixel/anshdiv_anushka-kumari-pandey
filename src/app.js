@@ -39,12 +39,32 @@ async function shrink(dataUrl) {
 }
 
 function posterEl(e) {
-  if (e.poster) return h("img", { class: "poster", src: e.poster, alt: `Poster for ${e.title}` });
-  return h("div", { class: "poster gen", vars: { "--h": hueOf(e.title) }, "aria-hidden": "true" }, LABEL[e.interests[0]] ?? "Event");
+  if (!e.poster) return h("div", { class: "poster gen", vars: { "--h": hueOf(e.title) }, "aria-hidden": "true" }, LABEL[e.interests[0]] ?? "Event");
+  const b = h("button", { class: "posterbtn", type: "button", "aria-label": `Open poster for ${e.title}` }, h("img", { class: "poster", src: e.poster, alt: `Poster for ${e.title}` }));
+  b.addEventListener("click", () => openPoster(e));
+  return b;
+}
+/** Full-size poster viewer (nothing is cropped). Tap the poster on a card or in the details to open it; Esc, the close button or a tap outside closes it. */
+function openPoster(e) {
+  $("#posterImg").src = e.poster; $("#posterImg").alt = `Poster for ${e.title}`;
+  $("#posterOpen").href = e.poster;
+  $("#posterDlg").showModal();
+}
+/** Social pages the host added when posting. Only the ones that were filled in are returned. */
+const socialLinks = (e) => [["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["linkedin", "LinkedIn"]].filter(([k]) => e[k]).map(([k, t]) => [t, e[k]]);
+/** Google Maps directions: from the person's pinned city when known, otherwise Maps asks for the start point. Falls back to the venue text when there is no pin. */
+function directionsUrl(e, o) {
+  if (e.mode === "online") return "";
+  const dest = e.lat != null ? `${e.lat},${e.lng}` : [e.venue, e.city, e.state, e.country].filter(Boolean).join(", ");
+  if (!dest) return "";
+  return `https://www.google.com/maps/dir/?api=1${o ? `&origin=${o.lat},${o.lng}` : ""}&destination=${encodeURIComponent(dest)}`;
 }
 const tagList = (e, n = 2) => h("p", { class: "tags" }, h("span", { class: "kind" }, eventLabel(e.type)), h("span", { class: "kind" }, MODE_TEXT[e.mode]),
   ...(e.followed ? [h("span", { class: "kind" }, "Following")] : []), ...e.interests.slice(0, n).map((i) => h("span", {}, LABEL[i])));
-const channels = (e) => { const c = [["whatsapp", "Community"], ["instagram", "Instagram"], ["linkedin", "LinkedIn"], ["website", "Website"]].filter(([k]) => e[k]).map(([, n]) => n); return c.length ? [h("p", { class: "hint" }, `Also on: ${c.join(" · ")}`)] : []; };
+const channels = (e) => {
+  const links = [...(directionsUrl(e, state.origin) ? [["Directions", directionsUrl(e, state.origin)]] : []), ...socialLinks(e)];
+  return links.length ? [h("p", { class: "clinks" }, ...links.map(([t, href]) => h("a", { class: "chip-link", href, target: "_blank", rel: "noopener noreferrer", "aria-label": `${t} for ${e.title} (opens in a new tab)` }, t)))] : [];
+};
 
 function card(e) {
   const dl = deadlineInfo(e);
@@ -205,8 +225,8 @@ function openEvent(e) {
   };
   const [trigger, calMenu] = calendarMenu(e);
   $("#dlgBody").replaceChildren(posterEl(e), h("h2", { id: "dlgT" }, e.title), tagList(e, 4), ...why(e), kf,
-    h("div", { class: "row" }, join, ...(e.website ? [ext(e.website, "Register")] : []), ...(e.lat != null && o ? [ext(`https://www.google.com/maps/dir/?api=1&origin=${o.lat},${o.lng}&destination=${e.lat},${e.lng}`, "Get directions")] : []),
-      trigger, ext(inviteLink(e, whenText(e)), "Invite a friend"), followBtn(e)), calMenu,
+    h("div", { class: "row" }, join, ...(e.website ? [ext(e.website, "Register")] : []), ...(directionsUrl(e, o) ? [ext(directionsUrl(e, o), "Get directions")] : []),
+      ...socialLinks(e).map(([t, href]) => ext(href, t)), trigger, ext(inviteLink(e, whenText(e)), "Invite a friend"), followBtn(e)), calMenu,
     ...tabs(TABS.map(([id, title]) => [id, title, body[id]])));
   $("#dlg").showModal();
 }
@@ -330,6 +350,9 @@ function bind() {
   });
   $("#dlgX").addEventListener("click", () => $("#dlg").close());
   $("#dlg").addEventListener("close", revokeCal);
+  $("#posterX").addEventListener("click", () => $("#posterDlg").close());
+  $("#posterDlg").addEventListener("click", (ev) => { if (ev.target === ev.currentTarget || ev.target.id === "posterImg") $("#posterDlg").close(); }); // tap outside or on the image closes
+  $("#posterDlg").addEventListener("close", () => { $("#posterImg").removeAttribute("src"); });
 
   const pf = $("#profileForm");
   chipBoxes($("#pInterests"), "interests", 5, state.profile?.interests);

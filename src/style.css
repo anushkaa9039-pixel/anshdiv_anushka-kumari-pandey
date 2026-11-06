@@ -155,3 +155,12 @@ dialog h3{font:900 1.15rem var(--serif);margin:.4rem 0 .2rem}
 .minelist .acts{display:flex;flex-wrap:wrap;gap:.4rem}.keybox{margin-bottom:1rem}.keybox summary{cursor:pointer;font-weight:700}
 .keybox input{width:100%;max-width:32rem}.split{margin:.25rem 0}.chip.wide{width:100%}
 .editing{outline:3px dashed var(--red);outline-offset:4px}
+
+.posterbtn{display:block;width:100%;padding:0;margin:0;border:0;background:none;cursor:zoom-in;border-radius:.55rem .55rem 0 0}
+.posterbtn:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.clinks{display:flex;flex-wrap:wrap;gap:.4rem;margin:.2rem 0}
+.chip-link{display:inline-block;padding:.35rem .7rem;min-height:2rem;border:2px solid var(--ink);border-radius:2rem;background:#fff;color:var(--ink);font:800 .85rem var(--sans);text-decoration:none}
+.chip-link:hover,.chip-link:focus-visible{background:var(--sun)}
+dialog.pv{width:min(60rem,96vw);padding:2.5rem .75rem .75rem;text-align:center}
+dialog.pv img{display:block;max-width:100%;max-height:75vh;margin:0 auto;object-fit:contain;cursor:zoom-out}
+.pvfoot{margin:.75rem 0 0}
