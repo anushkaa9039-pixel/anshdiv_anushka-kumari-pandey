@@ -21,7 +21,7 @@ async function withPage(t, opts, fn) {
   const ctx = await browser.newContext({ acceptDownloads: true, ...opts }), page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(`http://127.0.0.1:${app.address().port}/`);
+  await page.goto(`http://127.0.0.1:${app.address().port}/?demo=1`);
   await fn(page, errors, ctx);
   assert.deepEqual(errors, [], "no script errors");
 }

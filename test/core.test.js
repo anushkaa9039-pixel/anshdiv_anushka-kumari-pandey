@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { haversine, parseMapLink, safeLink, validatePoster, sniffImage, isoDate, dateIn, daysUntil, formatDate, deadlineInfo, formatPrice, formatKm,
   affinity, matchScore, suggestReason, rank, validateEvent, makePeople, reach, streak, parseEventText, shareKit, inviteLink, icsFor, safePoster,
   cleanName, greeting, hueOf, EVENT_TYPES, HOST_TYPES, MODES } from "../src/core.js";
-import { EVENTS } from "../src/data.js";
+import { ALL_EVENTS as EVENTS } from "../src/data.js";
 import { isCuratedId } from "../src/core.js";
 
 const NOW = new Date(2026, 9, 24, 10);

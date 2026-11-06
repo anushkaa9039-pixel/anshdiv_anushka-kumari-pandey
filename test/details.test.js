@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateEvent, calendarSlot, icsFor, googleCalUrl, icsFilename, telHref } from "../src/core.js";
 import { calendarMonths, sections, keyFacts, schedule, feeText, teamText, rulesList, relative, longDate, TABS } from "../src/detail.js";
-import { EVENTS } from "../src/data.js";
+import { ALL_EVENTS as EVENTS } from "../src/data.js";
 
 const NOW = new Date(2026, 9, 24, 10);
 const base = { title: "Chess Night", host: "Club", desc: "A relaxed evening of chess for all levels.", interests: ["gaming"], type: "meetup", hostType: "community", mode: "online",

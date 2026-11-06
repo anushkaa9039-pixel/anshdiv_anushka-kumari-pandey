@@ -1,14 +1,15 @@
 import { INTERESTS, EVENT_TYPES, BENEFITS, CITIES, rank, validateEvent, validatePoster, parseMapLink, haversine, makePeople, reach, streak, weekOf, parseEventText, shareKit,
   hueOf, cleanName, affinity, suggestReason, sniffImage, greeting, eventLabel, icsFor, googleCalUrl, icsFilename, inviteLink, safePoster, isCuratedId, formatDate, deadlineInfo, formatPrice, formatKm, dateIn } from "./core.js";
 import { MODE_TEXT, TABS, CAL_KEYS, sections, keyFacts, whenText, longDate } from "./detail.js";
-import { EVENTS } from "./data.js";
+import { EVENTS, ALL_EVENTS } from "./data.js";
+const BASE_EVENTS = new URLSearchParams(location.search).has("demo") ? ALL_EVENTS : EVENTS; // empty unless ?demo=1
 import { analyze, loadEvents, publishEvent, loadDoubts, postDoubt, savePerson, dropPerson, fetchAudience, updateEvent, deleteEvent, sendRsvp } from "./api.js";
 import { $, h, msg, toast, showErrors } from "./dom.js";
 import { store, deviceId } from "./store.js";
 
 const LABEL = Object.fromEntries(INTERESTS), people = makePeople(240);
 const place = store.get("nk:place", null);
-const state = { events: [...EVENTS], origin: place ? { lat: place.lat, lng: place.lng } : null, where: place?.where ?? "", nearbyKm: 25, interest: "all", type: "all", mode: "all", when: "any", price: "any", query: "",
+const state = { events: [...BASE_EVENTS], origin: place ? { lat: place.lat, lng: place.lng } : null, where: place?.where ?? "", nearbyKm: 25, interest: "all", type: "all", mode: "all", when: "any", price: "any", query: "",
   profile: store.get("nk:profile", null), following: store.get("nk:follow", []), history: store.get("nk:history", []), going: new Set(store.get("nk:going", [])), weeks: store.get("nk:weeks", []), pin: null, poster: null,
   mine: store.get("nk:mine", []), admin: store.get("nk:admin", ""), editing: null, demo: false, discoverable: store.get("nk:discover", false) };
 const hooks = { edit: () => {}, stop: () => {} }; // wired up inside bind(), used by the "Your posted events" list
@@ -546,12 +547,12 @@ addEventListener("hashchange", route);
 loadEvents().then((list) => {
   const status = $("#feedStatus");
   if (!Array.isArray(list)) {
-    status.textContent = "Live events are unavailable right now, so you are seeing sample events. Anything you post is saved on this device only.";
+    status.textContent = "Live events are unavailable right now, so no events can be shown right now. Anything you post is saved on this device only.";
     status.classList.add("warn");
     return;
   }
-  status.textContent = list.length ? "" : "No organizer has posted yet. These are sample events. Post the first real one!";
+  status.textContent = list.length ? "" : "No events yet. Post the first one from Post an event!";
   const shared = list.flatMap((e) => { const v = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" }, new Date(), { optionalEmail: isCuratedId(e.id) }); return v.ok ? [{ ...v.value, id: Number(e.id), joined: Number(e.joined) || 0, poster: safePoster(e.poster) }] : []; });
-  state.events = [...shared, ...EVENTS.filter((x) => !shared.some((y) => y.id === x.id))]; // an admin-edited built-in event replaces its original
+  state.events = [...shared, ...BASE_EVENTS.filter((x) => !shared.some((y) => y.id === x.id))]; // an admin-edited built-in event replaces its original
   renderList(); renderMine();
 });

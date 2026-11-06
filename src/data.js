@@ -20,7 +20,7 @@ const MORE = {
 };
 const moreFor = (id) => { const m = MORE[id]; return m ? { ...m, regStart: m.regStart == null ? null : dateIn(m.regStart), timeline: (m.timeline ?? []).map((t) => ({ ...t, date: dateIn(t.date) })) } : {}; };
 const mk = (id, e) => ({ ...D, sample: true, id, poster: `/posters/${id}.svg`, ...e, ...moreFor(id), date: e.date === null ? null : dateIn(e.date ?? 1), regDeadline: e.regDeadline == null ? null : dateIn(e.regDeadline) });
-export const EVENTS = [
+export const ALL_EVENTS = [
   mk(1, { title: "Build Night: ship it", host: "GDG Bhopal", type: "hackathon", hostType: "community", interests: ["software", "ai"], level: "student", ...BHO, venue: "MANIT campus", lat: 23.2166, lng: 77.4079, date: 1, regDeadline: 0, time: "18:30", joined: 41, benefits: ["certificate", "swag", "food"], teamMin: 1, teamMax: 4, aiTools: "allowed", interCollege: "yes", rules: "Bring your own laptop. Code must be written during the event.", faqs: [{ q: "Do I need a team?", a: "No. Come solo and we will help you find teammates on the spot." }, { q: "Is food provided?", a: "Yes, dinner and snacks are included." }], desc: "Four hours, one idea, one live demo. Bring a laptop and a teammate or find one on the spot." }),
   mk(2, { title: "Open Mic & Chai", host: "Kahani Collective", type: "meetup", hostType: "community", interests: ["music", "art"], ...BHO, venue: "Cafe Kahani, Arera Colony", lat: 23.249, lng: 77.398, date: 0, time: "19:00", joined: 28, benefits: ["food"], desc: "Poetry, music and stories on a small stage. Sign up to perform or just come to listen." }),
   mk(3, { title: "Resume Clinic for Freshers", host: "Placement Cell", type: "workshop", hostType: "college", interests: ["career"], level: "student", ...BHO, venue: "Seminar Hall", lat: 23.212, lng: 77.435, date: 2, regDeadline: 1, time: "11:00", joined: 63, benefits: ["certificate", "mentorship"], desc: "Get your resume reviewed one on one by working engineers and fix the top five mistakes." }),
@@ -36,3 +36,5 @@ export const EVENTS = [
   mk(13, { title: "Delhi Cyber Workshop", host: "DTU Security Cell", type: "workshop", hostType: "college", interests: ["cyber"], level: "student", mode: "offline", city: "Delhi", state: "Delhi", country: "India", venue: "DTU Main Block", lat: 28.7499, lng: 77.1183, date: 8, regDeadline: 6, time: "10:00", joined: 95, price: 199, benefits: ["certificate", "swag"], teamMin: 1, teamMax: 2, interCollege: "yes", desc: "A hands-on introduction to ethical hacking: reconnaissance, web vulnerabilities and safe lab practice." }),
   ...CURATED,
 ];
+/** What visitors see: nothing is pre-loaded, so only events organizers post appear. Add ?demo=1 to the address to preview the built-in sample and Mumbai events. */
+export const EVENTS = [];
