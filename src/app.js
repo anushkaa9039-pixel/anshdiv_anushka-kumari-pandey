@@ -1,5 +1,5 @@
 import { INTERESTS, EVENT_TYPES, BENEFITS, CITIES, rank, validateEvent, validatePoster, parseMapLink, haversine, makePeople, reach, streak, weekOf, parseEventText, shareKit,
-  hueOf, cleanName, affinity, suggestReason, sniffImage, greeting, eventLabel, icsFor, googleCalUrl, icsFilename, inviteLink, safePoster, formatDate, deadlineInfo, formatPrice, formatKm, dateIn } from "./core.js";
+  hueOf, cleanName, affinity, suggestReason, sniffImage, greeting, eventLabel, icsFor, googleCalUrl, icsFilename, inviteLink, safePoster, isCuratedId, formatDate, deadlineInfo, formatPrice, formatKm, dateIn } from "./core.js";
 import { MODE_TEXT, TABS, CAL_KEYS, sections, keyFacts, whenText, longDate } from "./detail.js";
 import { EVENTS } from "./data.js";
 import { analyze, loadEvents, publishEvent, loadDoubts, postDoubt, savePerson, dropPerson, fetchAudience, updateEvent, deleteEvent, sendRsvp } from "./api.js";
@@ -55,7 +55,9 @@ const socialLinks = (e) => [["whatsapp", "WhatsApp"], ["instagram", "Instagram"]
 /** Google Maps directions: from the person's pinned city when known, otherwise Maps asks for the start point. Falls back to the venue text when there is no pin. */
 function directionsUrl(e, o) {
   if (e.mode === "online") return "";
-  const dest = e.lat != null ? `${e.lat},${e.lng}` : [e.venue, e.city, e.state, e.country].filter(Boolean).join(", ");
+  const byName = isCuratedId(e.id); // built-in Mumbai events have approximate pins, so Maps searches by venue name instead
+  if (byName && /after registration/i.test(e.venue)) return "";
+  const dest = byName ? [e.venue, e.city, e.state].filter(Boolean).join(", ") : e.lat != null ? `${e.lat},${e.lng}` : [e.venue, e.city, e.state, e.country].filter(Boolean).join(", ");
   if (!dest) return "";
   return `https://www.google.com/maps/dir/?api=1${o ? `&origin=${o.lat},${o.lng}` : ""}&destination=${encodeURIComponent(dest)}`;
 }
@@ -226,7 +228,8 @@ function openEvent(e) {
   const [trigger, calMenu] = calendarMenu(e);
   $("#dlgBody").replaceChildren(posterEl(e), h("h2", { id: "dlgT" }, e.title), tagList(e, 4), ...why(e), kf,
     h("div", { class: "row" }, join, ...(e.website ? [ext(e.website, "Register")] : []), ...(directionsUrl(e, o) ? [ext(directionsUrl(e, o), "Get directions")] : []),
-      ...socialLinks(e).map(([t, href]) => ext(href, t)), trigger, ext(inviteLink(e, whenText(e)), "Invite a friend"), followBtn(e)), calMenu,
+      ...socialLinks(e).map(([t, href]) => ext(href, t)), trigger, ext(inviteLink(e, whenText(e)), "Invite a friend"), followBtn(e),
+      ...(state.admin && !e.sample ? [button("Edit event / add poster", () => { $("#dlg").close(); location.hash = "host"; setTimeout(() => hooks.edit(e, state.mine.find((m) => m.id === e.id)?.token ?? ""), 80); })] : [])), calMenu,
     ...tabs(TABS.map(([id, title]) => [id, title, body[id]])));
   $("#dlg").showModal();
 }
@@ -472,7 +475,7 @@ function bind() {
     const input = { ...Object.fromEntries(new FormData(hf)), interests: picked(hf, "interests"), benefits: picked(hf, "benefits"), lat: state.pin?.lat, lng: state.pin?.lng,
       faqs: rowValues("#faqs", "faqQ", "faqA").map(([q, a]) => ({ q, a })), timeline: rowValues("#timeline", "tlLabel", "tlDate").map(([label, date]) => ({ label, date })),
       prizes: rowValues("#prizes", "pzPlace", "pzReward").map(([place, reward]) => ({ place, reward })) };
-    const res = validateEvent(input);
+    const res = validateEvent(input, new Date(), { optionalEmail: Boolean(state.editing && isCuratedId(state.editing.id)) });
     showErrors(hf, res.errors);
     if (!res.ok) { msg("#hostMsg", "Fix the highlighted fields."); return; }
     const editing = state.editing, btn = $("#pubBtn"); btn.disabled = true;
@@ -548,7 +551,7 @@ loadEvents().then((list) => {
     return;
   }
   status.textContent = list.length ? "" : "No organizer has posted yet. These are sample events. Post the first real one!";
-  const shared = list.flatMap((e) => { const v = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" }); return v.ok ? [{ ...v.value, id: Number(e.id), joined: Number(e.joined) || 0, poster: safePoster(e.poster) }] : []; });
-  state.events = [...shared, ...EVENTS];
+  const shared = list.flatMap((e) => { const v = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" }, new Date(), { optionalEmail: isCuratedId(e.id) }); return v.ok ? [{ ...v.value, id: Number(e.id), joined: Number(e.joined) || 0, poster: safePoster(e.poster) }] : []; });
+  state.events = [...shared, ...EVENTS.filter((x) => !shared.some((y) => y.id === x.id))]; // an admin-edited built-in event replaces its original
   renderList(); renderMine();
 });

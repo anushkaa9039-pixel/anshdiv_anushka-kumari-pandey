@@ -4,6 +4,7 @@ import { haversine, parseMapLink, safeLink, validatePoster, sniffImage, isoDate,
   affinity, matchScore, suggestReason, rank, validateEvent, makePeople, reach, streak, parseEventText, shareKit, inviteLink, icsFor, safePoster,
   cleanName, greeting, hueOf, EVENT_TYPES, HOST_TYPES, MODES } from "../src/core.js";
 import { EVENTS } from "../src/data.js";
+import { isCuratedId } from "../src/core.js";
 
 const NOW = new Date(2026, 9, 24, 10);
 const BPL = { lat: 23.2599, lng: 77.4126 };
@@ -118,7 +119,7 @@ test("validateEvent: fees, benefits, team, rules, contact, FAQs and links", () =
 });
 test("every sample event is itself valid and covers the brief", () => {
   for (const e of EVENTS) {
-    const r = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" });
+    const r = validateEvent({ ...e, dateMode: e.date ? "fixed" : "tbd" }, new Date(), { optionalEmail: Boolean(e.curated) });
     assert.ok(r.ok, `${e.title}: ${JSON.stringify(r.errors)}`);
     assert.equal(safePoster(e.poster), e.poster);
   }
@@ -126,6 +127,15 @@ test("every sample event is itself valid and covers the brief", () => {
   assert.deepEqual([...new Set(EVENTS.map((e) => e.hostType))].sort(), [...HOST_TYPES].sort());
   assert.deepEqual([...new Set(EVENTS.map((e) => e.mode))].sort(), [...MODES].sort());
   assert.ok(EVENTS.some((e) => e.country !== "India" && e.country) && EVENTS.some((e) => e.interests.includes("cyber")) && EVENTS.some((e) => e.interests.includes("blockchain")));
+});
+test("built-in Mumbai events: real, upcoming, Mumbai-area, with at least 2 of every type", () => {
+  const real = EVENTS.filter((e) => e.curated);
+  for (const t of EVENT_TYPES) assert.ok(real.filter((e) => e.type === t).length >= 2, `needs 2 ${t}`);
+  for (const e of real) {
+    assert.ok(isCuratedId(e.id) && e.sample === false && /^https:\/\//.test(e.website) && e.date >= "2026-11-06", e.title);
+    assert.ok(Math.abs(e.lat - 19.1) < 0.4 && Math.abs(e.lng - 72.9) < 0.4, `${e.title} should be in the Mumbai area`);
+  }
+  assert.equal(new Set(real.map((e) => e.id)).size, real.length);
 });
 test("audience finder: deterministic, mode-aware, level and interest aware", () => {
   const a = makePeople(240), b = makePeople(240);

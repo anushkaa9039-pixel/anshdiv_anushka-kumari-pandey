@@ -1,6 +1,6 @@
 // Persistent store: events, posters and per-event doubt threads, on top of a key-value backend (see kv.js).
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
-import { validateEvent, sniffImage, dateIn } from "../src/core.js";
+import { validateEvent, sniffImage, dateIn, isCuratedId } from "../src/core.js";
 import { createFileKv } from "./kv.js";
 
 /** Returns {mime, bytes} for a real PNG/JPEG/WebP data URL under 2 MB, else null. */
@@ -58,13 +58,19 @@ export function createEventStore(target, { max = 300 } = {}) {
     },
     /** Organizer edit. `token` is the management key given at publish time; `admin` skips that check. */
     async update(id, token, input, posterDataUrl = null, { admin = false, now = new Date() } = {}) {
-      const r = validateEvent(input, now);
+      const r = validateEvent(input, now, { optionalEmail: isCuratedId(id) });
       if (!r.ok) return { ok: false, status: 400, errors: r.errors };
       const poster = posterDataUrl ? parsePoster(posterDataUrl) : null;
       if (posterDataUrl && !poster) return { ok: false, status: 400, errors: { poster: "Invalid poster" } };
       if (posterDataUrl && kv.maxValue && posterDataUrl.length > kv.maxValue) return { ok: false, status: 400, errors: { poster: "Poster is too large" } };
       return lock(async () => {
         const list = await events(), i = list.findIndex((e) => String(e.id) === String(id));
+        if (i < 0 && admin && isCuratedId(id)) { // first admin edit of a built-in Mumbai event: it becomes a server event with the same id
+          const event = { id: Number(id), ...r.value, poster: poster ? `/api/poster/${id}` : null, mh: null };
+          if (poster) await kv.set(`poster:${id}`, posterDataUrl);
+          await kv.set("events", [event, ...list]);
+          return { ok: true, event: pub(event) };
+        }
         if (i < 0) return { ok: false, status: 404 };
         if (!owns(list[i], token, admin)) return { ok: false, status: 403 };
         if (list.some((e, j) => j !== i && dupKey(e) === dupKey(r.value))) return { ok: false, status: 409, errors: { title: "This event is already posted." } };

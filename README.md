@@ -51,3 +51,6 @@ Database and login, real user profiles feeding the audience finder, notification
 
 No login or sign-up yet, so: anyone can post or ask a question, organizers cannot edit or delete their events, and the profile, RSVPs and stamps live in the browser (localStorage) only.
 Sample events are marked "Sample event (demo data)".
+
+## Real Mumbai events and adding posters
+`src/curated.js` holds 12 real upcoming Mumbai events (ids 9001 to 9099). To add a poster or fix a detail: set `ADMIN_KEY` on the server (Vercel: Project Settings, Environment Variables), open Post an event, paste `admin:YOUR_KEY` into "I have a management key", then open any event and tap "Edit event / add poster" (or use Your posted events). The first save stores it on the server and it replaces the built-in entry for everyone.

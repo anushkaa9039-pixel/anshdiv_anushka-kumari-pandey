@@ -15,7 +15,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FILES = { // allow-list: nothing else on disk is ever served
   "/": ["index.html", "text/html"], "/index.html": ["index.html", "text/html"],
   "/src/app.js": ["src/app.js", "text/javascript"], "/src/api.js": ["src/api.js", "text/javascript"],
-  "/src/core.js": ["src/core.js", "text/javascript"], "/src/data.js": ["src/data.js", "text/javascript"],
+  "/src/core.js": ["src/core.js", "text/javascript"], "/src/data.js": ["src/data.js", "text/javascript"], "/src/curated.js": ["src/curated.js", "text/javascript"],
   "/src/dom.js": ["src/dom.js", "text/javascript"], "/src/detail.js": ["src/detail.js", "text/javascript"], "/src/store.js": ["src/store.js", "text/javascript"],
   "/src/style.css": ["src/style.css", "text/css"],
   "/manifest.webmanifest": ["manifest.webmanifest", "application/manifest+json"], "/icon.svg": ["icon.svg", "image/svg+xml"],

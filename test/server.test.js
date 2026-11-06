@@ -134,3 +134,18 @@ test("event edit/delete need the management key; admin key overrides; rsvp count
   assert.equal((await (await fetch(`${base}/api/events`)).json()).length, 0);
   assert.equal((await fetch(`${base}/api/events/${event.id}`)).status, 405);
 });
+
+test("built-in Mumbai events: only an admin can edit one, and the edit then replaces it for everyone", async (t) => {
+  const { s, base } = await start({ store: createEventStore(createMemoryKv()), adminKey: "root-secret", limit: { writeMax: 100 } }); t.after(done(s));
+  const body = JSON.stringify({ event: evBody({ title: "DevFest Mumbai 2026", contactEmail: "" }) });
+  const put = (id, headers) => fetch(`${base}/api/events/${id}`, { method: "PUT", headers: { ...JSONH, ...headers }, body });
+  assert.equal((await put(9009, {})).status, 404); // no key: nothing happens
+  const withMail = JSON.stringify({ event: evBody() });
+  assert.equal((await fetch(`${base}/api/events/5`, { method: "PUT", headers: { ...JSONH, "x-admin-key": "root-secret" }, body: withMail })).status, 404); // admin cannot invent ids outside the built-in range
+  const r = await put(9009, { "x-admin-key": "root-secret" });
+  assert.equal(r.status, 200);
+  const list = await (await fetch(`${base}/api/events`)).json();
+  assert.deepEqual(list.filter((e) => e.id === 9009).map((e) => e.title), ["DevFest Mumbai 2026"]);
+  assert.equal((await put(9009, { "x-admin-key": "root-secret" })).status, 200); // a second edit updates, never duplicates
+  assert.equal((await (await fetch(`${base}/api/events`)).json()).filter((e) => e.id === 9009).length, 1);
+});

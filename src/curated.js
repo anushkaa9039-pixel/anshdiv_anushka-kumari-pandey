@@ -1,0 +1,52 @@
+// Real upcoming Mumbai events (checked 6 Nov 2026 against the organisers' own listings on Luma, Unstop, Meetup, Konfhub,
+// vybedriven.in and the mumbai2go.in aggregator). Only facts the listings state are filled in; anything a listing does not
+// publish (prizes, speakers, organiser email, exact times) is left blank or called out in the description.
+// Ids 9001 to 9099 are reserved for these. An admin can edit one in the app (add a poster, fix a detail): the edit is then
+// saved on the server under the same id and replaces this entry for everyone. Pins are approximate; directions search by venue name.
+const BASE = { level: "all", price: 0, currency: "INR", benefits: [], prizeNote: "", teamMin: null, teamMax: null, aiTools: "na", interCollege: "na", rules: "", contactEmail: "",
+  faqs: [], whatsapp: "", instagram: "", linkedin: "", website: "", joined: 0, regStart: null, regDeadline: null, timeline: [], prizes: [], feeUnit: "person", eligibility: "",
+  contactPhone: "", contactName: "", sample: false, curated: true, poster: null, mode: "offline", city: "Mumbai", state: "Maharashtra", country: "India", time: "10:00" };
+const GO = (slug) => `https://mumbai2go.in/go/${slug}`;
+const mk = (id, e) => ({ ...BASE, id, ...e });
+export const CURATED = [
+  mk(9001, { title: "Beyond 9to5 Buildathon", host: "EtriqAI", type: "hackathon", hostType: "company", interests: ["software", "ai"], venue: "Paytm Office, Vile Parle", lat: 19.099, lng: 72.85,
+    date: "2026-11-22", time: "10:00", website: GO("beyond-9to5-buildathon-20261122-bcd1e1"), benefits: [],
+    desc: "A free one-day buildathon (10 AM to 6 PM) hosted by EtriqAI at the Paytm office in Vile Parle, Mumbai. Build something with other makers over the day. Prizes, team size and agenda are not published yet, so check the registration page before you go." }),
+  mk(9002, { title: "Singularity 2.0", host: "KC College of Engineering", type: "hackathon", hostType: "college", interests: ["software", "ai"], level: "student",
+    venue: "KC College of Engineering, Manpada, Ghodbunder Rd", city: "Thane", lat: 19.2518, lng: 72.9788, date: "2026-12-19", time: "15:00", interCollege: "yes",
+    website: GO("singularity-2-0-20261219-e26721"), eligibility: "Engineering students.",
+    desc: "An 18-hour national-level offline hackathon for engineering students, designed to test technical endurance and collaboration. Runs 19 to 20 December at KC College of Engineering and Management Studies and Research (Manpada off-campus), Thane. Free to join. Prizes and team size are not published yet." }),
+  mk(9003, { title: "Quasar 5.0: 36-Hour Hackathon", host: "VPPCOEVA, Mumbai", type: "hackathon", hostType: "college", interests: ["software", "ai", "web"],
+    venue: "Vasantdada Patil Pratishthan's College, Sion", lat: 19.0425, lng: 72.8641, date: "2027-01-23", time: "08:00", interCollege: "yes",
+    website: GO("quasar-5-0-36-hour-international-hackathon-20270123-71be3f"), eligibility: "Students, developers, designers and innovators.",
+    desc: "A 36-hour international hackathon for students, developers, designers and innovators at Vasantdada Patil Pratishthan's College of Engineering and Visual Arts, Sion, Mumbai. 23 to 24 January 2027, free entry. Prizes and team size are not published yet." }),
+  mk(9004, { title: "IDEA Competition 2026", host: "E-Cell CRCE", type: "hackathon", hostType: "college", interests: ["startup", "career"], mode: "hybrid",
+    venue: "Fr. Conceicao Rodrigues College of Engg, Bandra", lat: 19.0466, lng: 72.8197, date: "2027-02-06", time: "10:00", benefits: ["certificate", "prizes", "mentorship"], prizeNote: "Prize pool of ₹50,000+",
+    website: "https://unstop.com/hackathons/idea-competition-2026-fr-conceicao-rodrigues-college-of-engineering-frcrce-bandra-1736048",
+    timeline: [{ label: "Competition opened", date: "2026-10-28" }],
+    desc: "A multi-round startup idea competition by E-Cell CRCE that runs from 28 October 2026 to 6 February 2027 (hybrid, Bandra). Four impact tracks, expert mentorship, an incubation handoff, and a certificate for clearing each round. Found via vybedriven.in; register on Unstop." }),
+  mk(9005, { title: "Enterprise AI Summit Mumbai 2026", host: "stage-x", type: "summit", hostType: "company", interests: ["ai", "startup", "cloud"], level: "pro",
+    venue: "Jio World Convention Centre, BKC", lat: 19.0646, lng: 72.8654, date: "2026-12-05", time: "09:00", website: GO("enterprise-ai-summit-mumbai-2026-20261205-03e4bd"),
+    desc: "A free one-day summit (9 AM to 6 PM) on enterprise AI at the Jio World Convention Centre, Bandra Kurla Complex, hosted by stage-x. Speakers and agenda are not published yet. Another free enterprise AI summit runs at the same venue on the same day." }),
+  mk(9006, { title: "Bharat Fintech Summit 2027", host: "Bharat Fintech Summit", type: "summit", hostType: "company", interests: ["startup", "blockchain", "data"], level: "pro",
+    venue: "JW Marriott Sahar, Andheri East", lat: 19.1016, lng: 72.8737, date: "2027-02-10", time: "07:30", price: 6000, prizeNote: "Tickets from ₹6,000", website: GO("bharat-fintech-summit-2027-20270210-a8b02f"),
+    desc: "A two-day fintech summit with networking at JW Marriott Sahar, Andheri East, Mumbai (10 to 11 February 2027). Tickets are priced at ₹6,000. Speakers and agenda are not published yet." }),
+  mk(9007, { title: "Agentic AI & Workflow Automation Workshop", host: "IIT Bombay (venue)", type: "workshop", hostType: "college", interests: ["ai", "software"],
+    venue: "IIT Bombay, Powai", lat: 19.1334, lng: 72.9133, date: "2026-12-23", time: "10:00", price: 1500, prizeNote: "₹1,500 per person", website: GO("agentic-ai-and-workflow-automation-1-day-workshop-20261223-9ccfd9"),
+    desc: "A one-day hands-on workshop on agentic AI and workflow automation, 10 AM to 6 PM at IIT Bombay, Powai. Fee is ₹1,500. The listing does not name the organising team or agenda, so confirm details on the registration page." }),
+  mk(9008, { title: "Ethical Hacking Workshop (Techfest)", host: "Techfest, IIT Bombay", type: "workshop", hostType: "college", interests: ["cyber", "software"],
+    venue: "IIT Bombay, Powai", lat: 19.1334, lng: 72.9133, date: "2026-12-15", time: "10:00", website: GO("ethical-hacking-workshop-20261215-967159"),
+    desc: "A free two-day offline workshop (15 to 16 December) by Techfest, IIT Bombay on cybersecurity, ethical hacking, penetration testing and modern attack techniques, with concept sessions, live demos, hands-on practice and a multi-domain Capture The Flag. The start time is not published, so check the registration page." }),
+  mk(9009, { title: "DevFest Mumbai 2026", host: "GDG MAD & GDG Cloud Mumbai", type: "conference", hostType: "community", interests: ["software", "cloud", "ai"],
+    venue: "The Ballard Pier Downtown Experience Centre, Fort", lat: 18.9345, lng: 72.8403, date: "2026-12-05", time: "08:30", website: "https://luma.com/luh11tqc",
+    instagram: "https://www.instagram.com/gdgmad", desc: "The annual DevFest unconference by GDG MAD and GDG Cloud Mumbai, which mixes serious tech with unserious people: meet developers, learn new skills and explore ideas without a rigid schedule. 8:30 AM to 5:30 PM at the Ballard Pier Downtown Experience Centre, Fort. Free; registration is by request and needs host approval on Luma. More at devfestmumbai.com." }),
+  mk(9010, { title: "Swift Bharat 2026", host: "Swift Bharat", type: "conference", hostType: "community", interests: ["mobile", "software"],
+    venue: "Y. C. Centre, Nariman Point", lat: 18.9267, lng: 72.8228, date: "2026-11-19", time: "10:00", price: 4999, prizeNote: "Tickets from ₹4,999", website: GO("swift-bharat-2026-20261119-29935c"),
+    desc: "A community-built international conference for Apple platform developers, 19 to 20 November at the Y. C. Centre, Mumbai. Technical Swift and SwiftUI sessions and product talks for engineers, indie developers, designers and founders. Tickets from ₹4,999 on Konfhub. Speakers are not listed yet." }),
+  mk(9011, { title: "MumbAI AI Saturdays: Get Funded to Co-Work", host: "MumbAI AI", type: "meetup", hostType: "community", interests: ["ai", "startup", "social"],
+    venue: "BHIVE Adani Inspire, BKC", lat: 19.0668, lng: 72.8687, date: "2026-11-07", time: "18:00", website: GO("mumbai-ai-saturdays-get-funded-to-co-work-20261107-6fa817"),
+    desc: "A casual co-working session for AI programmers, founders and the AI-curious, part of the weekly MumbAI AI Saturdays meetups. 6 PM to 8:30 PM at BHIVE Adani Inspire, BKC. Beginner friendly. Bring a laptop. Check the ticket page to see if sign-up is needed." }),
+  mk(9012, { title: "AI Connect: Mumbai", host: "Elastic Mumbai User Group", type: "meetup", hostType: "community", interests: ["ai", "data", "cyber"],
+    venue: "Venue shared after registration", lat: 19.076, lng: 72.8777, date: "2026-11-28", time: "10:00", website: GO("ai-connect-mumbai-20261128-d11acd"),
+    desc: "A community meetup on AI, search, observability and security for developers and AI builders, 10 AM to 2 PM on 28 November, hosted by the Elastic Mumbai User Group. Access is restricted and registration on Luma is required, and the exact venue is shared after you register." }),
+];

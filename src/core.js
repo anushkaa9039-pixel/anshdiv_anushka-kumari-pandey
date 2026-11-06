@@ -141,7 +141,9 @@ export function rank(events, { origin = null, nearbyKm = 25, interest = "all", t
 }
 
 // ---- posting
-export function validateEvent(i, now = new Date()) {
+/** Ids 9001 to 9099 are the real Mumbai events shipped in src/curated.js. */
+export const isCuratedId = (id) => { const n = Number(id); return Number.isInteger(n) && n > 9000 && n < 9100; };
+export function validateEvent(i, now = new Date(), { optionalEmail = false } = {}) {
   const errors = {}, text = (v) => String(v ?? "").trim();
   const title = text(i.title), host = text(i.host), desc = text(i.desc);
   if (title.length < 4 || title.length > 70) errors.title = "Use 4 to 70 characters.";
@@ -216,7 +218,7 @@ export function validateEvent(i, now = new Date()) {
   }
 
   const contactEmail = text(i.contactEmail);
-  if (contactEmail.length > 100 || !/^[^\s@<>"]{1,64}@[^\s@<>"]+\.[^\s@<>"]{2,}$/.test(contactEmail)) errors.contactEmail = "Enter an email people can reach you on.";
+  if (!(optionalEmail && !contactEmail) && (contactEmail.length > 100 || !/^[^\s@<>"]{1,64}@[^\s@<>"]+\.[^\s@<>"]{2,}$/.test(contactEmail))) errors.contactEmail = "Enter an email people can reach you on.";
   const contactPhone = text(i.contactPhone), contactName = text(i.contactName);
   if (contactPhone && !telHref(contactPhone)) errors.contactPhone = "Use 7 to 15 digits, like +91 98765 43210.";
   if (contactName.length > 40) errors.contactName = "Keep this under 40 characters.";

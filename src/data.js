@@ -1,5 +1,6 @@
 // Sample events: nearby in Bhopal, other states, international and online. Dates are relative to today.
 import { dateIn } from "./core.js";
+import { CURATED } from "./curated.js";
 const WA = "https://chat.whatsapp.com/DemoCommunity", IG = "https://www.instagram.com/nukkad.demo", LI = "https://www.linkedin.com/company/nukkad-demo", WEB = "https://example.org/register";
 const BHO = { mode: "offline", city: "Bhopal", state: "Madhya Pradesh", country: "India" };
 const D = { level: "all", venue: "", price: 0, currency: "INR", benefits: ["certificate"], prizeNote: "", teamMin: null, teamMax: null, aiTools: "na", interCollege: "na", rules: "", contactEmail: "hello@example.org", faqs: [], whatsapp: WA, instagram: IG, linkedin: LI, website: WEB, joined: 0, lat: null, lng: null, time: "18:00",
@@ -33,4 +34,5 @@ export const EVENTS = [
   mk(11, { title: "Bengaluru Blockchain Summit", host: "Chainworks", type: "summit", hostType: "company", interests: ["blockchain", "startup"], level: "pro", mode: "offline", city: "Bengaluru", state: "Karnataka", country: "India", venue: "Convention Centre", lat: 12.9716, lng: 77.5946, date: 15, regDeadline: 12, time: "09:00", joined: 410, price: 1499, benefits: ["mentorship", "swag"], desc: "Founders, builders and investors discuss real-world blockchain products. Two days of talks and demos." }),
   mk(12, { title: "Singapore AI Week", host: "Orchid Labs", type: "conference", hostType: "company", interests: ["ai", "data"], mode: "hybrid", city: "Singapore", state: "", country: "Singapore", venue: "Marina Bay Hall", lat: 1.3521, lng: 103.8198, date: 30, regDeadline: 20, time: "09:00", joined: 600, price: 120, currency: "SGD", benefits: ["certificate", "mentorship"], desc: "A week of talks and workshops on applied AI. Attend in person in Singapore or join the live stream from anywhere." }),
   mk(13, { title: "Delhi Cyber Workshop", host: "DTU Security Cell", type: "workshop", hostType: "college", interests: ["cyber"], level: "student", mode: "offline", city: "Delhi", state: "Delhi", country: "India", venue: "DTU Main Block", lat: 28.7499, lng: 77.1183, date: 8, regDeadline: 6, time: "10:00", joined: 95, price: 199, benefits: ["certificate", "swag"], teamMin: 1, teamMax: 2, interCollege: "yes", desc: "A hands-on introduction to ethical hacking: reconnaissance, web vulnerabilities and safe lab practice." }),
+  ...CURATED,
 ];
